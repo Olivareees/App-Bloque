@@ -1,4 +1,4 @@
-// Mirocódromo v6.6 Mejorado
+// Mirocódromo v9.0 - Enhanced Features
 let canvas, ctx, viewCanvas, viewCtx;
 let img = new Image();
 let detectedHolds = [];
@@ -6,6 +6,8 @@ let selectedHolds = [];
 let currentBlock = {};
 let editingIndex = null;
 let manualMode = false;
+let searchQuery = "";
+let exportBlocksCheckboxes = [];
 
 const grados = ["4","5","5+","6a","6a+","6b","6b+","6c","6c+","7a","7a+","7b","7b+"];
 const ubicaciones = [
@@ -28,11 +30,41 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("edit-holds-btn").addEventListener("click", editHolds);
     document.getElementById("new-block-btn").addEventListener("click", showNewBlockForm);
     document.getElementById("edit-from-view-btn").addEventListener("click", showEditBlockSection);
+    document.getElementById("toggle-info-btn").addEventListener("click", toggleInfoPanel);
+    document.getElementById("search-input").addEventListener("input", (e) => {
+        searchQuery = e.target.value.toLowerCase();
+        displayBlocks();
+    });
+    document.getElementById("filter-grade").addEventListener("change", displayBlocks);
+    document.getElementById("filter-zone").addEventListener("change", displayBlocks);
+    document.getElementById("options-btn").addEventListener("click", openOptionsModal);
+    document.querySelector(".modal-close").addEventListener("click", closeOptionsModal);
+    document.getElementById("options-modal").addEventListener("click", (e) => {
+        if(e.target.id === "options-modal") closeOptionsModal();
+    });
+    document.getElementById("modal-export-btn").addEventListener("click", openExportModal);
+    document.getElementById("modal-import-btn").addEventListener("click", () => {
+        document.getElementById("import-file").click();
+    });
+    document.getElementById("import-file").addEventListener("change", importData);
+    document.getElementById("select-all-btn").addEventListener("click", selectAllExportBlocks);
+    document.getElementById("deselect-all-btn").addEventListener("click", deselectAllExportBlocks);
+    document.getElementById("confirm-export-btn").addEventListener("click", confirmExport);
+    document.getElementById("cancel-export-btn").addEventListener("click", closeExportModal);
+    document.getElementById("toggle-favorite-btn").addEventListener("click", toggleFavorite);
+    
+    // Close export modal from close button
+    const exportModalCloseBtn = document.querySelector("#export-modal .modal-close");
+    if(exportModalCloseBtn){
+        exportModalCloseBtn.addEventListener("click", closeExportModal);
+    }
+    
+    document.getElementById("export-modal").addEventListener("click", (e) => {
+        if(e.target.id === "export-modal") closeExportModal();
+    });
 
     document.querySelectorAll(".back-btn").forEach(b => b.addEventListener("click", goHome));
     document.getElementById("logo").addEventListener("click", goHome);
-    document.getElementById("filter-grade").addEventListener("change", displayBlocks);
-    document.getElementById("filter-zone").addEventListener("change", displayBlocks);
 
     canvas.addEventListener("click", handleCanvasClick);
     const toggleBtn = document.getElementById("toggle-manual-btn");
@@ -201,6 +233,9 @@ function saveCanvasHolds() {
     if (zoneEl) currentBlock.zone = zoneEl.value;
     const notesEl = document.getElementById("block-notes");
     if (notesEl) currentBlock.notes = notesEl.value;
+    
+    // Inicializar favorito si es nuevo
+    if(currentBlock.favorite === undefined) currentBlock.favorite = false;
 
     // Save to localStorage (new or edited)
     const blocks = JSON.parse(localStorage.getItem("blocks") || "[]");
@@ -453,13 +488,21 @@ function displayBlocks(){
     const blocks=JSON.parse(localStorage.getItem("blocks")||"[]");
     const g=document.getElementById("filter-grade").value;
     const z=document.getElementById("filter-zone").value;
+    
+    let totalCount = 0;
+    let favCount = 0;
 
     blocks.forEach((b,idx)=>{
         if(g&&b.grade!==g) return;
         if(z&&b.zone!==z) return;
+        if(searchQuery && !b.name.toLowerCase().includes(searchQuery)) return;
+        
+        totalCount++;
+        if(b.favorite) favCount++;
 
         const card=document.createElement("div");
         card.className="block-card";
+        if(b.favorite) card.classList.add("favorite");
         card.innerHTML=`<img src="${b.imgSrcOriginal}">
         <div class="info"><h3>${b.name||"Sin nombre"}</h3>
         <p>${b.grade||""}</p><p>${b.zone||""}</p></div>`;
@@ -471,12 +514,46 @@ function displayBlocks(){
         };
         grid.appendChild(card);
     });
+    
+    // Actualizar estadísticas
+    updateStats();
+}
+
+function updateStats(){
+    const blocks=JSON.parse(localStorage.getItem("blocks")||"[]");
+    const totalBlocks = blocks.length;
+    const favoriteCount = blocks.filter(b => b.favorite).length;
+    
+    document.getElementById("stat-total").textContent = totalBlocks;
+    document.getElementById("stat-favorites").textContent = favoriteCount;
 }
 
 function showViewBlockSection(){
     hideCreateButton();
     document.querySelectorAll("section").forEach(s=>s.style.display="none");
     document.getElementById("view-block-section").style.display="block";
+    
+    // Rellena la información del bloque
+    document.getElementById("view-block-name").textContent = currentBlock.name || "Sin nombre";
+    document.getElementById("view-block-grade").textContent = currentBlock.grade || "-";
+    document.getElementById("view-block-zone").textContent = currentBlock.zone || "-";
+    document.getElementById("view-block-notes").textContent = currentBlock.notes || "Sin notas";
+    
+    // Actualiza el botón de favorito
+    const favBtn = document.getElementById("toggle-favorite-btn");
+    if(currentBlock.favorite){
+        favBtn.classList.add("active");
+        favBtn.textContent = "★ Quitar Favorito";
+    } else {
+        favBtn.classList.remove("active");
+        favBtn.textContent = "☆ Marcar Favorito";
+    }
+    
+    // Cierra el panel de información
+    const infoPanel = document.getElementById("view-block-info");
+    infoPanel.classList.remove("expanded");
+    infoPanel.classList.add("collapsed");
+    
     drawViewBlock();
 }
 
@@ -511,4 +588,167 @@ function showEditBlockSection(){
     document.getElementById("edit-block-grade").value=currentBlock.grade||"";
     document.getElementById("edit-block-zone").value=currentBlock.zone||"";
     document.getElementById("edit-block-notes").value=currentBlock.notes||"";
+}
+
+function toggleInfoPanel(){
+    const infoPanel = document.getElementById("view-block-info");
+    const toggleBtn = document.getElementById("toggle-info-btn");
+    
+    if(infoPanel.classList.contains("collapsed")){
+        infoPanel.classList.remove("collapsed");
+        infoPanel.classList.add("expanded");
+        toggleBtn.textContent = "Ocultar Información";
+    } else {
+        infoPanel.classList.remove("expanded");
+        infoPanel.classList.add("collapsed");
+        toggleBtn.textContent = "Ver Información";
+    }
+}
+
+// ---------- Nuevas Funcionalidades ----------
+
+function openOptionsModal(){
+    document.getElementById("options-modal").classList.remove("hidden");
+    updateModalStats();
+}
+
+function closeOptionsModal(){
+    document.getElementById("options-modal").classList.add("hidden");
+}
+
+function updateModalStats(){
+    const blocks = JSON.parse(localStorage.getItem("blocks")||"[]");
+    const totalBlocks = blocks.length;
+    const favoriteCount = blocks.filter(b => b.favorite).length;
+    
+    document.getElementById("modal-stat-total").textContent = totalBlocks;
+    document.getElementById("modal-stat-favorites").textContent = favoriteCount;
+}
+
+function toggleFavorite(){
+    if(editingIndex === null) return;
+    const blocks = JSON.parse(localStorage.getItem("blocks")||"[]");
+    blocks[editingIndex].favorite = !blocks[editingIndex].favorite;
+    localStorage.setItem("blocks", JSON.stringify(blocks));
+    currentBlock.favorite = blocks[editingIndex].favorite;
+    
+    const favBtn = document.getElementById("toggle-favorite-btn");
+    if(currentBlock.favorite){
+        favBtn.classList.add("active");
+        favBtn.textContent = "★ Quitar Favorito";
+    } else {
+        favBtn.classList.remove("active");
+        favBtn.textContent = "☆ Marcar Favorito";
+    }
+    goHome();
+}
+
+function openExportModal(){
+    const blocks = JSON.parse(localStorage.getItem("blocks")||"[]");
+    const blocksList = document.getElementById("export-blocks-list");
+    blocksList.innerHTML = "";
+    exportBlocksCheckboxes = [];
+    
+    blocks.forEach((block, idx) => {
+        const item = document.createElement("div");
+        item.className = "export-block-item";
+        
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.id = "export-check-" + idx;
+        checkbox.value = idx;
+        checkbox.checked = true;
+        
+        const info = document.createElement("div");
+        info.className = "export-block-info";
+        
+        const name = document.createElement("div");
+        name.className = "export-block-name";
+        name.textContent = block.name || "Sin nombre";
+        
+        const meta = document.createElement("div");
+        meta.className = "export-block-meta";
+        meta.textContent = (block.grade || "-") + " • " + (block.zone || "-");
+        
+        info.appendChild(name);
+        info.appendChild(meta);
+        
+        item.appendChild(checkbox);
+        item.appendChild(info);
+        blocksList.appendChild(item);
+        
+        exportBlocksCheckboxes.push(checkbox);
+    });
+    
+    document.getElementById("options-modal").classList.add("hidden");
+    document.getElementById("export-modal").classList.remove("hidden");
+}
+
+function closeExportModal(){
+    document.getElementById("export-modal").classList.add("hidden");
+}
+
+function selectAllExportBlocks(){
+    exportBlocksCheckboxes.forEach(cb => cb.checked = true);
+}
+
+function deselectAllExportBlocks(){
+    exportBlocksCheckboxes.forEach(cb => cb.checked = false);
+}
+
+function confirmExport(){
+    const selectedIndices = exportBlocksCheckboxes
+        .map((cb, idx) => cb.checked ? parseInt(cb.value) : null)
+        .filter(idx => idx !== null);
+    
+    if(selectedIndices.length === 0){
+        alert("Por favor selecciona al menos un bloque para exportar");
+        return;
+    }
+    
+    const allBlocks = JSON.parse(localStorage.getItem("blocks")||"[]");
+    const selectedBlocks = selectedIndices.map(idx => allBlocks[idx]);
+    
+    const dataStr = JSON.stringify(selectedBlocks, null, 2);
+    const dataBlob = new Blob([dataStr], {type: "application/json"});
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    const timestamp = new Date().toISOString().split('T')[0];
+    const blockCount = selectedBlocks.length;
+    link.download = `app-bloque-bloques(${blockCount})-${timestamp}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    closeExportModal();
+    alert("Se han exportado " + blockCount + " vías correctamente. Puedes compartir este archivo con tus amigos.");
+}
+
+function importData(event){
+    const file = event.target.files[0];
+    if(!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const importedBlocks = JSON.parse(e.target.result);
+            if(!Array.isArray(importedBlocks)){
+                alert("Formato de archivo inválido");
+                return;
+            }
+            
+            const currentBlocks = JSON.parse(localStorage.getItem("blocks")||"[]");
+            const mergedBlocks = [...currentBlocks, ...importedBlocks];
+            localStorage.setItem("blocks", JSON.stringify(mergedBlocks));
+            
+            alert("Se han importado " + importedBlocks.length + " bloques correctamente. Total de bloques: " + mergedBlocks.length);
+            closeOptionsModal();
+            location.reload();
+        } catch(err) {
+            alert("Error al leer el archivo: " + err.message);
+        }
+    };
+    reader.readAsText(file);
 }

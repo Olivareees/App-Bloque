@@ -3,60 +3,128 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mirocódromo v6.5</title>
+<title>app-bloque</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
-    <div id="logo">Mirocódromo</div>
+    <div id="logo">app-bloque</div>
     <button id="new-block-btn">Crear Bloque</button>
 </header>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 
 <section id="home-section">
-    <div class="filters">
-        <select id="filter-grade"></select>
-    <base href="./">
-        <select id="filter-zone"></select>
+    <div class="home-header">
+        <div class="filters">
+            <button id="options-btn">Opciones</button>
+            <input type="text" id="search-input" placeholder="Buscar bloque por nombre...">
+            <select id="filter-grade"></select>
+            <select id="filter-zone"></select>
+        </div>
     </div>
     <div id="blocks-grid"></div>
 </section>
 
+<!-- Modal de Opciones -->
+<div id="options-modal" class="modal hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Opciones</h2>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="stats-section">
+                <h3>Estadísticas</h3>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <span class="stat-label">Total de Vías</span>
+                        <span class="stat-value" id="modal-stat-total">0</span>
+                    </div>
+                    <div class="stat-box">
+                        <span class="stat-label">Vías Favoritas</span>
+                        <span class="stat-value" id="modal-stat-favorites">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="actions-section">
+                <h3>Datos</h3>
+                <button id="modal-export-btn" class="full-width">Exportar Bloques</button>
+                <button id="modal-import-btn" class="full-width">Importar Bloques</button>
+                <input type="file" id="import-file" accept=".json" style="display:none;">
+            </div>
+            
+            <div class="info-section">
+                <h3>Información</h3>
+                <p>Usa "Exportar Bloques" para compartir tus vías con amigos o hacer una copia de seguridad.</p>
+                <p>Usa "Importar Bloques" para cargar vías que alguien te haya compartido.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Selección para Exportar -->
+<div id="export-modal" class="modal hidden">
+    <div class="modal-content export-modal-content">
+        <div class="modal-header">
+            <h2>Seleccionar Bloques a Exportar</h2>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="export-controls">
+                <button id="select-all-btn" class="btn-select-all">Seleccionar Todos</button>
+                <button id="deselect-all-btn" class="btn-select-all">Deseleccionar Todos</button>
+            </div>
+            <div id="export-blocks-list" class="export-blocks-list">
+                <!-- Se rellenará dinámicamente -->
+            </div>
+            <div class="export-actions">
+                <button id="confirm-export-btn" class="btn-export">Exportar Seleccionados</button>
+                <button id="cancel-export-btn" class="btn-cancel">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <section id="view-block-section">
     <canvas id="view-block-canvas"></canvas>
-    <div id="view-block-info">
+    <button id="toggle-info-btn">Ver Información</button>
+    <div id="view-block-info" class="collapsed">
         <h3 id="view-block-name"></h3>
-        <p id="view-block-grade"></p>
-        <p id="view-block-zone"></p>
-        <p id="view-block-notes"></p>
+        <p><strong>Grado:</strong> <span id="view-block-grade"></span></p>
+        <p><strong>Zona:</strong> <span id="view-block-zone"></span></p>
+        <p><strong>Notas:</strong> <span id="view-block-notes"></span></p>
     </div>
-    <button id="edit-from-view-btn">Editar bloque</button>
-    <button class="back-btn">Volver</button>
+    <div class="view-actions">
+        <button id="toggle-favorite-btn">☆ Marcar Favorito</button>
+        <button id="edit-from-view-btn">Editar Bloque</button>
+        <button class="back-btn">Volver</button>
+    </div>
 </section>
 
 <section id="new-block-section">
-    <h2>Crear Bloque</h2>
+    <h2>Crear Nuevo Bloque</h2>
     <div id="photo-wrapper">
         <div id="photo-placeholder">Foto</div>
         <input type="file" id="photo-input" accept="image/*">
         <div id="photo-preview"></div>
     </div>
 
-    <input type="text" id="block-name" placeholder="Nombre">
+    <input type="text" id="block-name" placeholder="Nombre del bloque">
     <select id="block-grade"></select>
     <select id="block-zone"></select>
-    <textarea id="block-notes" placeholder="Notas"></textarea>
+    <textarea id="block-notes" placeholder="Notas adicionales..."></textarea>
 
-    <button id="save-new-block">Seleccionar presas</button>
+    <button id="save-new-block">Seleccionar Presas</button>
     <button class="back-btn">Volver</button>
 </section>
 
 <section id="canvas-section">
     <canvas id="block-canvas"></canvas>
-    <button id="toggle-manual-btn">Modo manual: OFF</button>
-    <button id="save-canvas-block">Guardar presas</button>
+    <button id="toggle-manual-btn">Modo Manual: OFF</button>
+    <button id="save-canvas-block">Guardar Presas</button>
     <button class="back-btn">Volver</button>
 </section>
 
@@ -67,9 +135,9 @@
     <select id="edit-block-zone"></select>
     <textarea id="edit-block-notes"></textarea>
 
-    <button id="edit-holds-btn">Editar selección de presas</button>
-    <button id="save-edit-block">Guardar bloque</button>
-    <button id="delete-block">Borrar bloque</button>
+    <button id="edit-holds-btn">Editar Selección de Presas</button>
+    <button id="save-edit-block">Guardar Bloque</button>
+    <button id="delete-block">Borrar Bloque</button>
     <button class="back-btn">Volver</button>
 </section>
 
