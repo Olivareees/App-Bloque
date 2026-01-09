@@ -10,7 +10,6 @@
 
 <header>
     <div id="logo">app-bloque</div>
-    <button id="new-block-btn">Crear Bloque</button>
 </header>
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
@@ -18,7 +17,8 @@
 <section id="home-section">
     <div class="home-header">
         <div class="filters">
-            <button id="options-btn">Opciones</button>
+            <button id="options-btn" class="menu-btn">☰</button>
+            <button id="new-block-btn">+ Crear Bloque</button>
             <input type="text" id="search-input" placeholder="Buscar bloque por nombre...">
             <select id="filter-grade"></select>
             <select id="filter-zone"></select>
@@ -117,15 +117,19 @@
     <select id="block-zone"></select>
     <textarea id="block-notes" placeholder="Notas adicionales..."></textarea>
 
-    <button id="save-new-block">Seleccionar Presas</button>
-    <button class="back-btn">Volver</button>
+    <div id="new-block-actions">
+        <button id="save-new-block">Seleccionar Presas</button>
+        <button class="back-btn">Volver</button>
+    </div>
 </section>
 
 <section id="canvas-section">
     <canvas id="block-canvas"></canvas>
-    <button id="toggle-manual-btn">Modo Manual: OFF</button>
-    <button id="save-canvas-block">Guardar Presas</button>
-    <button class="back-btn">Volver</button>
+    <div id="canvas-actions">
+        <button id="toggle-manual-btn">Modo Manual: OFF</button>
+        <button id="save-canvas-block">Guardar Presas</button>
+        <button class="back-btn">Volver</button>
+    </div>
 </section>
 
 <section id="edit-block-section">

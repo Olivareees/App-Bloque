@@ -1,0 +1,128 @@
+⚠️ RESTRICCIONES DE ALMACENAMIENTO - LECTURA OBLIGATORIA
+
+═══════════════════════════════════════════════════════════════════
+
+🔴 ZONA CRÍTICA DE ALMACENAMIENTO
+
+Las siguientes líneas y claves NO DEBEN SER MODIFICADAS NUNCA:
+
+1. CLAVE DE ALMACENAMIENTO: "blocks"
+   ├─ Ubicación: Múltiples funciones en app.js
+   ├─ Razón: Usada en todo el código para persistencia
+   └─ Riesgo: Si cambia, todos los datos se pierden
+
+2. MÉTODO DE ALMACENAMIENTO: localStorage.getItem/setItem
+   ├─ Ubicación: app.js
+   ├─ Razón: Browser API estándar
+   └─ Riesgo: Cambiar a otra API rompe la compatibilidad
+
+3. FORMATO: JSON serializado
+   ├─ Ubicación: JSON.stringify() / JSON.parse()
+   ├─ Razón: Portabilidad entre dispositivos
+   └─ Riesgo: Otro formato rompe export/import
+
+═══════════════════════════════════════════════════════════════════
+
+📋 FUNCIONES QUE MODIFICAN ALMACENAMIENTO:
+
+[CRÍTICA] saveCanvasHolds() - Línea ~243
+├─ localStorage.setItem("blocks", JSON.stringify(blocks));
+└─ NO MODIFICAR
+
+[CRÍTICA] saveEditedBlock() - Línea ~465
+├─ localStorage.setItem("blocks",JSON.stringify(blocks));
+└─ NO MODIFICAR
+
+[CRÍTICA] deleteBlock() - Línea ~480
+├─ localStorage.setItem("blocks",JSON.stringify(blocks));
+└─ NO MODIFICAR
+
+[CRÍTICA] toggleFavorite() - Línea ~632
+├─ localStorage.setItem("blocks", JSON.stringify(blocks));
+└─ NO MODIFICAR
+
+[CRÍTICA] importData() - Línea ~744
+├─ localStorage.setItem("blocks", JSON.stringify(mergedBlocks));
+└─ NO MODIFICAR
+
+═══════════════════════════════════════════════════════════════════
+
+📖 ESTRUCTURA DE DATOS (INMUTABLE):
+
+{
+  name: string,           // Nombre del bloque
+  grade: string,          // Dificultad: "4", "5", "5+", "6a", etc
+  zone: string,           // Zona: "cueva (izquierda)", "techo", etc
+  notes: string,          // Notas adicionales
+  imgSrcOriginal: string, // Imagen en Base64
+  holds: array,           // [{x: 0-1, y: 0-1}, ...]
+  favorite: boolean       // true/false
+}
+
+═══════════════════════════════════════════════════════════════════
+
+✅ OPERACIONES SEGURAS PERMITIDAS:
+
+✓ Agregar nuevos campos a los bloques (si se inicializan correctamente)
+✓ Agregar nuevas funciones que lean/escriban con "blocks"
+✓ Mejorar validación de datos antes de guardar
+✓ Agregar más opciones de filtrado/búsqueda
+✓ Crear nuevos modales o vistas
+
+❌ OPERACIONES PROHIBIDAS:
+
+✗ Cambiar el nombre de la clave "blocks"
+✗ Cambiar la API de almacenamiento (localStorage → otra cosa)
+✗ Cambiar el formato de serialización (JSON → otra cosa)
+✗ Eliminar campos de la estructura sin migración
+✗ Modificar cómo se guardan las imágenes sin plan de backup
+
+═══════════════════════════════════════════════════════════════════
+
+🔍 VERIFICACIÓN DE INTEGRIDAD:
+
+Antes de hacer cambios:
+
+1. Lee DATA_STORAGE_ANALYSIS.md
+2. Busca "⚠️ ALMACENAMIENTO CRÍTICO" en app.js
+3. Si tu cambio afecta localStorage, EXPLICA POR QUÉ
+4. Mantén backwards compatibility con datos antiguos
+5. Prueba en múltiples dispositivos si es posible
+
+═══════════════════════════════════════════════════════════════════
+
+📱 CÓMO FUNCIONA EN MÚLTIPLES DISPOSITIVOS:
+
+Dispositivo A (Usuario):
+  └─ localStorage["blocks"] = [bloque1, bloque2, ...]
+
+Dispositivo B (Mismo usuario):
+  └─ localStorage["blocks"] = [bloque1, bloque2, ...]  (inicial)
+  └─ Importa archivo → localStorage["blocks"] = [...merged...]
+
+Esta separación es INTENCIONAL y NECESARIA.
+
+═══════════════════════════════════════════════════════════════════
+
+❓ PREGUNTAS FRECUENTES:
+
+P: ¿Puedo cambiar localStorage a sessionStorage?
+R: NO. Perderías datos cuando cierres la pestaña.
+
+P: ¿Puedo cambiar la clave a "data" o "app-data"?
+R: NO. Romperías todos los dispositivos existentes.
+
+P: ¿Puedo guardar en un servidor externo?
+R: Posiblemente, PERO necesitarías migración de datos.
+   Consulta con el equipo antes.
+
+P: ¿Qué pasa si localStorage se llena?
+R: Las imágenes Base64 pueden ocupar ~2-5MB cada una.
+   Máximo ~10MB por dominio en la mayoría de navegadores.
+   Limita bloques a ~50-100 con imágenes medianas.
+
+═══════════════════════════════════════════════════════════════════
+
+Documento creado: 9 de enero de 2026
+Restricción nivel: MÁXIMO
+Requiere autorización para cambios: SÍ

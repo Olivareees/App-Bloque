@@ -118,6 +118,12 @@ function goHome() {
     document.querySelectorAll("section").forEach(s => s.style.display="none");
     document.getElementById("home-section").style.display="block";
     document.getElementById("new-block-btn").style.display="inline-block";
+    // Mostrar botones de new-block-actions nuevamente
+    const newBlockActions = document.getElementById("new-block-actions");
+    if (newBlockActions) newBlockActions.classList.remove("hidden");
+    // Mostrar botones de canvas nuevamente
+    const canvasActions = document.getElementById("canvas-actions");
+    if (canvasActions) canvasActions.classList.remove("hidden");
     displayBlocks();
 }
 
@@ -151,8 +157,12 @@ function showNewBlockForm() {
 
 function showCanvasSection() {
     hideCreateButton();
+    // Ocultar botones de new-block-section cuando entramos en canvas
+    const newBlockActions = document.getElementById("new-block-actions");
+    if (newBlockActions) newBlockActions.classList.add("hidden");
     document.getElementById("canvas-section").style.display = "block";
     document.getElementById("home-section").style.display = "none";
+    document.getElementById("new-block-section").style.display = "none";
     document.getElementById("edit-block-section").style.display = "none";
 }
 
@@ -237,7 +247,9 @@ function saveCanvasHolds() {
     // Inicializar favorito si es nuevo
     if(currentBlock.favorite === undefined) currentBlock.favorite = false;
 
-    // Save to localStorage (new or edited)
+    // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
+    // Esta clave es usada en todo el código. Cambiarla romperá la persistencia de datos
+    // en todos los dispositivos que usen la app.
     const blocks = JSON.parse(localStorage.getItem("blocks") || "[]");
     if (editingIndex !== null) blocks[editingIndex] = currentBlock; else blocks.push(currentBlock);
     localStorage.setItem("blocks", JSON.stringify(blocks));
@@ -460,6 +472,7 @@ function saveEditedBlock(){
     currentBlock.zone = document.getElementById("edit-block-zone").value;
     currentBlock.notes = document.getElementById("edit-block-notes").value;
 
+    // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
     const blocks = JSON.parse(localStorage.getItem("blocks")||"[]");
     editingIndex!==null ? blocks[editingIndex]=currentBlock : blocks.push(currentBlock);
     localStorage.setItem("blocks",JSON.stringify(blocks));
@@ -475,6 +488,7 @@ function saveEditedBlock(){
 function deleteBlock(){
     if(editingIndex===null) return;
     if(!confirm("¿Seguro que quieres borrar este bloque?")) return;
+    // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
     const blocks=JSON.parse(localStorage.getItem("blocks")||"[]");
     blocks.splice(editingIndex,1);
     localStorage.setItem("blocks",JSON.stringify(blocks));
@@ -627,6 +641,7 @@ function updateModalStats(){
 
 function toggleFavorite(){
     if(editingIndex === null) return;
+    // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
     const blocks = JSON.parse(localStorage.getItem("blocks")||"[]");
     blocks[editingIndex].favorite = !blocks[editingIndex].favorite;
     localStorage.setItem("blocks", JSON.stringify(blocks));
@@ -706,6 +721,7 @@ function confirmExport(){
         return;
     }
     
+    // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
     const allBlocks = JSON.parse(localStorage.getItem("blocks")||"[]");
     const selectedBlocks = selectedIndices.map(idx => allBlocks[idx]);
     
@@ -739,6 +755,8 @@ function importData(event){
                 return;
             }
             
+            // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
+            // Los bloques importados se FUSIONAN con los existentes (no reemplazan)
             const currentBlocks = JSON.parse(localStorage.getItem("blocks")||"[]");
             const mergedBlocks = [...currentBlocks, ...importedBlocks];
             localStorage.setItem("blocks", JSON.stringify(mergedBlocks));
