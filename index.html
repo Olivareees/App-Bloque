@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirocódromo v6.5</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <div id="logo">Mirocódromo</div>
+    <button id="new-block-btn">Crear Bloque</button>
+</header>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+
+<section id="home-section">
+    <div class="filters">
+        <select id="filter-grade"></select>
+    <base href="./">
+        <select id="filter-zone"></select>
+    </div>
+    <div id="blocks-grid"></div>
+</section>
+
+<section id="view-block-section">
+    <canvas id="view-block-canvas"></canvas>
+    <div id="view-block-info">
+        <h3 id="view-block-name"></h3>
+        <p id="view-block-grade"></p>
+        <p id="view-block-zone"></p>
+        <p id="view-block-notes"></p>
+    </div>
+    <button id="edit-from-view-btn">Editar bloque</button>
+    <button class="back-btn">Volver</button>
+</section>
+
+<section id="new-block-section">
+    <h2>Crear Bloque</h2>
+    <div id="photo-wrapper">
+        <div id="photo-placeholder">Foto</div>
+        <input type="file" id="photo-input" accept="image/*">
+        <div id="photo-preview"></div>
+    </div>
+
+    <input type="text" id="block-name" placeholder="Nombre">
+    <select id="block-grade"></select>
+    <select id="block-zone"></select>
+    <textarea id="block-notes" placeholder="Notas"></textarea>
+
+    <button id="save-new-block">Seleccionar presas</button>
+    <button class="back-btn">Volver</button>
+</section>
+
+<section id="canvas-section">
+    <canvas id="block-canvas"></canvas>
+    <button id="toggle-manual-btn">Modo manual: OFF</button>
+    <button id="save-canvas-block">Guardar presas</button>
+    <button class="back-btn">Volver</button>
+</section>
+
+<section id="edit-block-section">
+    <h2>Editar Bloque</h2>
+    <input type="text" id="edit-block-name">
+    <select id="edit-block-grade"></select>
+    <select id="edit-block-zone"></select>
+    <textarea id="edit-block-notes"></textarea>
+
+    <button id="edit-holds-btn">Editar selección de presas</button>
+    <button id="save-edit-block">Guardar bloque</button>
+    <button id="delete-block">Borrar bloque</button>
+    <button class="back-btn">Volver</button>
+</section>
+
+<script src="app.js"></script>
+</body>
+</html>
