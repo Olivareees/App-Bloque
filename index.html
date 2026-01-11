@@ -12,16 +12,22 @@
     <div id="logo">app-bloque</div>
 </header>
 
+<!-- Toast Notification -->
+<div id="toast-notification" class="toast hidden"></div>
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 
 <section id="home-section">
     <div class="home-header">
-        <div class="filters">
+        <div class="header-top">
             <button id="options-btn" class="menu-btn">☰</button>
             <button id="new-block-btn">+ Crear Bloque</button>
-            <input type="text" id="search-input" placeholder="Buscar bloque por nombre...">
+            <input type="text" id="search-input" placeholder="Buscar por nombre, grado (ej: 6a) o zona...">
+        </div>
+        <div class="filters">
             <select id="filter-grade"></select>
             <select id="filter-zone"></select>
+            <button id="filter-favorites-btn" class="filter-btn">☆ Favoritos</button>
         </div>
     </div>
     <div id="blocks-grid"></div>
@@ -88,6 +94,14 @@
     </div>
 </div>
 
+<!-- Modal Fullscreen para Zoom de Imagen -->
+<div id="image-zoom-modal" class="modal hidden" style="z-index: 2000; background: rgba(0,0,0,0.95);">
+    <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+        <button id="close-zoom-btn" style="position: fixed; top: 20px; right: 20px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.3); font-size: 32px; cursor: pointer; z-index: 2001; transition: all 0.3s ease; padding: 0; display: flex; align-items: center; justify-content: center;">×</button>
+        <img id="zoom-image" src="" alt="Imagen ampliada" style="max-width: 100%; max-height: 100%; object-fit: contain; cursor: grab;">
+    </div>
+</div>
+
 <section id="view-block-section">
     <canvas id="view-block-canvas"></canvas>
     <button id="toggle-info-btn">Ver Información</button>
@@ -127,6 +141,7 @@
     <canvas id="block-canvas"></canvas>
     <div id="canvas-actions">
         <button id="toggle-manual-btn">Modo Manual: OFF</button>
+        <button id="toggle-laterality-btn">Modo Lateralidad: OFF</button>
         <button id="save-canvas-block">Guardar Presas</button>
         <button class="back-btn">Volver</button>
     </div>

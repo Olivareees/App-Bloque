@@ -140,12 +140,54 @@ textarea {
     margin-bottom: 32px;
 }
 
+.header-top {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+#search-input {
+    flex: 1;
+    min-width: 200px;
+    max-width: 100%;
+}
+
 .filters {
     display: flex;
     gap: 12px;
     margin-bottom: 16px;
     flex-wrap: wrap;
     align-items: center;
+}
+
+.filter-btn {
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #fff;
+    border: 1px solid rgba(245, 158, 11, 0.5);
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+    white-space: nowrap;
+}
+
+.filter-btn:hover {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+    box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4);
+}
+
+.filter-btn.active {
+    background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+    box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
+}
+
+.filter-btn.active:hover {
+    background: linear-gradient(135deg, #db2777 0%, #be185d 100%);
+    box-shadow: 0 8px 20px rgba(236, 72, 153, 0.4);
 }
 
 .menu-btn {
@@ -392,6 +434,24 @@ select {
 
 #toggle-manual-btn.active:hover {
     background: linear-gradient(135deg, #059669 0%, #047857 100%);\n    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+}
+
+/* Laterality mode button */
+#toggle-laterality-btn {
+    margin: 12px 8px 12px 0;
+    background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);\n    box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
+}
+
+#toggle-laterality-btn:hover {
+    background: linear-gradient(135deg, #9333ea 0%, #7e22ce 100%);\n    box-shadow: 0 8px 20px rgba(168, 85, 247, 0.4);
+}
+
+#toggle-laterality-btn.active {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);\n    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+#toggle-laterality-btn.active:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);\n    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
 }
 
 /* Delete button - Red style */
@@ -800,4 +860,180 @@ canvas {
 #canvas-actions.hidden,
 #new-block-actions.hidden {
     display: none;
+}
+
+/* Toast Notification */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    padding: 16px 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+    z-index: 3000;
+    animation: slideInUp 0.3s ease;
+    max-width: 300px;
+    word-wrap: break-word;
+    font-weight: 600;
+}
+
+.toast.hidden {
+    display: none;
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Clear filters button */
+.clear-btn {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.clear-btn:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* Favorite indicator */
+#favorite-indicator {
+    color: #fbbf24;
+    font-size: 24px;
+    margin-left: 8px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    header {
+        padding: 16px 20px;
+    }
+
+    #logo {
+        font-size: 20px;
+        letter-spacing: 0.8px;
+    }
+
+    .home-header {
+        margin-bottom: 20px;
+    }
+
+    .header-top {
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .menu-btn {
+        min-width: 42px;
+        height: 42px;
+        padding: 8px 10px;
+        font-size: 18px;
+    }
+
+    #new-block-btn {
+        padding: 10px 16px;
+        font-size: 13px;
+        white-space: normal;
+    }
+
+    #search-input {
+        flex: 1;
+        min-width: 150px;
+        padding: 10px 12px;
+        font-size: 13px;
+    }
+
+    .filters {
+        gap: 8px;
+    }
+
+    .filters select {
+        padding: 10px 8px;
+        font-size: 13px;
+    }
+
+    .filter-btn {
+        padding: 10px 12px;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+
+    button {
+        padding: 10px 16px;
+        margin: 6px;
+        font-size: 12px;
+    }
+
+    section {
+        padding: 20px;
+    }
+
+    .modal-content {
+        width: 95%;
+        max-height: 90vh;
+    }
+
+    .toast {
+        bottom: 10px;
+        right: 10px;
+        max-width: 280px;
+        padding: 12px 16px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 480px) {
+    header {
+        padding: 12px 16px;
+    }
+
+    #logo {
+        font-size: 18px;
+    }
+
+    .header-top {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    #new-block-btn,
+    .menu-btn,
+    #search-input {
+        width: 100%;
+    }
+
+    .filters {
+        flex-direction: column;
+    }
+
+    .filters select,
+    .filter-btn {
+        width: 100%;
+    }
+
+    .block-card {
+        border-radius: 8px;
+    }
+
+    #blocks-grid {
+        grid-template-columns: 1fr;
+    }
 }

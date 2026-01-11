@@ -6,8 +6,11 @@ let selectedHolds = [];
 let currentBlock = {};
 let editingIndex = null;
 let manualMode = false;
+let lateralityMode = false;
+let currentLaterality = "B"; // B = Ambas (Both), L = Izquierda (Left), R = Derecha (Right)
 let searchQuery = "";
 let exportBlocksCheckboxes = [];
+let filterFavoritesOnly = false;
 
 const grados = ["4","5","5+","6a","6a+","6b","6b+","6c","6c+","7a","7a+","7b","7b+"];
 const ubicaciones = [
@@ -37,6 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     document.getElementById("filter-grade").addEventListener("change", displayBlocks);
     document.getElementById("filter-zone").addEventListener("change", displayBlocks);
+    document.getElementById("filter-favorites-btn").addEventListener("click", toggleFavoritesFilter);
     document.getElementById("options-btn").addEventListener("click", openOptionsModal);
     document.querySelector(".modal-close").addEventListener("click", closeOptionsModal);
     document.getElementById("options-modal").addEventListener("click", (e) => {
@@ -69,6 +73,9 @@ document.addEventListener("DOMContentLoaded", () => {
     canvas.addEventListener("click", handleCanvasClick);
     const toggleBtn = document.getElementById("toggle-manual-btn");
     if (toggleBtn) toggleBtn.addEventListener("click", toggleManualMode);
+    
+    const toggleLateralityBtn = document.getElementById("toggle-laterality-btn");
+    if (toggleLateralityBtn) toggleLateralityBtn.addEventListener("click", toggleLateralityMode);
 
     populateGrados();
     populateUbicaciones();
@@ -231,8 +238,12 @@ function editHolds() {
 }
 
 function saveCanvasHolds() {
-    // `selectedHolds` stores normalized coordinates (0..1).
-    currentBlock.holds = selectedHolds.map(h => ({ x: h.x, y: h.y }));
+    // `selectedHolds` stores normalized coordinates (0..1) and laterality.
+    currentBlock.holds = selectedHolds.map(h => ({ 
+        x: h.x, 
+        y: h.y,
+        laterality: h.laterality || "B"
+    }));
 
     // Try to read metadata from the creation form (if present).
     const nameEl = document.getElementById("block-name");
@@ -261,6 +272,9 @@ function saveCanvasHolds() {
     selectedHolds = [];
     detectedHolds = [];
 
+    // Show success notification
+    showToast("✓ Presas guardadas correctamente");
+    
     // Go back to home/grid view
     goHome();
 }
@@ -399,6 +413,42 @@ function connectedComponents(mask, w, h) {
     return comps;
 }
 
+function drawLateralityCircle(x, y, radius, laterality) {
+    // Dibuja un círculo con dos mitades de diferentes grosores según laterality
+    const lat = laterality || "B";
+    ctx.strokeStyle = "red";
+    
+    if (lat === "L") {
+        // Mitad izquierda gruesa, mitad derecha fina
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, Math.PI / 2, Math.PI * 1.5);
+        ctx.stroke();
+        
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, Math.PI * 1.5, Math.PI / 2);
+        ctx.stroke();
+    } else if (lat === "R") {
+        // Mitad izquierda fina, mitad derecha gruesa
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, Math.PI / 2, Math.PI * 1.5);
+        ctx.stroke();
+        
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, Math.PI * 1.5, Math.PI / 2);
+        ctx.stroke();
+    } else {
+        // Ambas mitades con grosor igual
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+}
+
 function drawCanvas() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
     ctx.drawImage(img,0,0,canvas.width,canvas.height);
@@ -410,14 +460,12 @@ function drawCanvas() {
         ctx.fill();
     });
 
-    ctx.strokeStyle="red";
-    ctx.lineWidth=3;
     selectedHolds.forEach(h=>{
         const x = h.x * canvas.width;
         const y = h.y * canvas.height;
-        ctx.beginPath();
-        ctx.arc(x,y,10,0,Math.PI*2);
-        ctx.stroke();
+        const laterality = h.laterality || "B";
+        
+        drawLateralityCircle(x, y, 10, laterality);
     });
 }
 
@@ -425,6 +473,24 @@ function handleCanvasClick(e){
     const r = canvas.getBoundingClientRect();
     const x = (e.clientX - r.left) * (canvas.width / r.width);
     const y = (e.clientY - r.top) * (canvas.height / r.height);
+    
+    if (lateralityMode) {
+        // En modo lateralidad, ciclar a través de L, R, B para pieza seleccionada
+        for (const h of selectedHolds) {
+            const sx = (h.x <= 1 ? h.x * canvas.width : h.x);
+            const sy = (h.y <= 1 ? h.y * canvas.height : h.y);
+            if (Math.hypot(sx - x, sy - y) < 12) {
+                const current = h.laterality || "B";
+                if (current === "L") h.laterality = "R";
+                else if (current === "R") h.laterality = "B";
+                else h.laterality = "L";
+                drawCanvas();
+                return;
+            }
+        }
+        return;
+    }
+    
     if (manualMode) {
         // toggle selected hold by direct click position
         const idx = selectedHolds.findIndex(s => {
@@ -433,7 +499,7 @@ function handleCanvasClick(e){
             return Math.hypot(sx - x, sy - y) < 12;
         });
         if (idx >= 0) selectedHolds.splice(idx, 1);
-        else selectedHolds.push({ x: x / canvas.width, y: y / canvas.height });
+        else selectedHolds.push({ x: x / canvas.width, y: y / canvas.height, laterality: currentLaterality });
         drawCanvas();
         return;
     }
@@ -448,7 +514,7 @@ function handleCanvasClick(e){
             });
 
             if (idx >= 0) selectedHolds.splice(idx, 1);
-            else selectedHolds.push({ x: h.x / canvas.width, y: h.y / canvas.height });
+            else selectedHolds.push({ x: h.x / canvas.width, y: h.y / canvas.height, laterality: currentLaterality });
 
             drawCanvas();
             break;
@@ -462,6 +528,15 @@ function toggleManualMode() {
     if (btn) {
         btn.textContent = manualMode ? 'Modo manual: ON' : 'Modo manual: OFF';
         btn.classList.toggle('active', manualMode);
+    }
+}
+
+function toggleLateralityMode() {
+    lateralityMode = !lateralityMode;
+    const btn = document.getElementById('toggle-laterality-btn');
+    if (btn) {
+        btn.textContent = lateralityMode ? 'Modo Lateralidad: ON' : 'Modo Lateralidad: OFF';
+        btn.classList.toggle('active', lateralityMode);
     }
 }
 
@@ -482,6 +557,10 @@ function saveEditedBlock(){
     img.src = "";
     selectedHolds = [];
     detectedHolds = [];
+    
+    // Show success notification
+    showToast("✓ Bloque actualizado correctamente");
+    
     goHome();
 }
 
@@ -509,7 +588,15 @@ function displayBlocks(){
     blocks.forEach((b,idx)=>{
         if(g&&b.grade!==g) return;
         if(z&&b.zone!==z) return;
-        if(searchQuery && !b.name.toLowerCase().includes(searchQuery)) return;
+        if(filterFavoritesOnly && !b.favorite) return;
+        
+        // Smart search: busca en nombre, grado y zona
+        if(searchQuery) {
+            const nameMatch = b.name.toLowerCase().includes(searchQuery);
+            const gradeMatch = b.grade && b.grade.toLowerCase().includes(searchQuery);
+            const zoneMatch = b.zone && b.zone.toLowerCase().includes(searchQuery);
+            if(!nameMatch && !gradeMatch && !zoneMatch) return;
+        }
         
         totalCount++;
         if(b.favorite) favCount++;
@@ -571,6 +658,42 @@ function showViewBlockSection(){
     drawViewBlock();
 }
 
+function drawViewLateralityCircle(x, y, radius, laterality) {
+    // Dibuja un círculo con dos mitades de diferentes grosores según laterality
+    const lat = laterality || "B";
+    viewCtx.strokeStyle = "red";
+    
+    if (lat === "L") {
+        // Mitad izquierda gruesa, mitad derecha fina
+        viewCtx.lineWidth = 5;
+        viewCtx.beginPath();
+        viewCtx.arc(x, y, radius, Math.PI / 2, Math.PI * 1.5);
+        viewCtx.stroke();
+        
+        viewCtx.lineWidth = 2;
+        viewCtx.beginPath();
+        viewCtx.arc(x, y, radius, Math.PI * 1.5, Math.PI / 2);
+        viewCtx.stroke();
+    } else if (lat === "R") {
+        // Mitad izquierda fina, mitad derecha gruesa
+        viewCtx.lineWidth = 2;
+        viewCtx.beginPath();
+        viewCtx.arc(x, y, radius, Math.PI / 2, Math.PI * 1.5);
+        viewCtx.stroke();
+        
+        viewCtx.lineWidth = 5;
+        viewCtx.beginPath();
+        viewCtx.arc(x, y, radius, Math.PI * 1.5, Math.PI / 2);
+        viewCtx.stroke();
+    } else {
+        // Ambas mitades con grosor igual
+        viewCtx.lineWidth = 3;
+        viewCtx.beginPath();
+        viewCtx.arc(x, y, radius, 0, Math.PI * 2);
+        viewCtx.stroke();
+    }
+}
+
 function drawViewBlock(){
     const image=new Image();
     image.src=currentBlock.imgSrcOriginal;
@@ -583,13 +706,17 @@ function drawViewBlock(){
         viewCtx.clearRect(0,0,viewCanvas.width,viewCanvas.height);
         viewCtx.drawImage(image,0,0,viewCanvas.width,viewCanvas.height);
 
-        viewCtx.strokeStyle="red";
-        viewCtx.lineWidth=3;
         currentBlock.holds.forEach(h=>{
-            viewCtx.beginPath();
-            viewCtx.arc(h.x*viewCanvas.width,h.y*viewCanvas.height,10,0,Math.PI*2);
-            viewCtx.stroke();
+            const x = h.x * viewCanvas.width;
+            const y = h.y * viewCanvas.height;
+            const laterality = h.laterality || "B";
+            
+            drawViewLateralityCircle(x, y, 10, laterality);
         });
+        
+        // Make canvas clickable to zoom
+        viewCanvas.style.cursor = "pointer";
+        viewCanvas.onclick = () => openImageZoom(currentBlock.imgSrcOriginal);
     };
 }
 
@@ -770,3 +897,120 @@ function importData(event){
     };
     reader.readAsText(file);
 }
+
+// ---------- Zoom Image Functions ----------
+function openImageZoom(imageSrc) {
+    const modal = document.getElementById("image-zoom-modal");
+    const img = document.getElementById("zoom-image");
+    if (!modal || !img) return;
+    
+    img.src = imageSrc;
+    img.style.transform = "scale(1) translate(0, 0)";
+    modal.classList.remove("hidden");
+}
+
+function closeImageZoom() {
+    const modal = document.getElementById("image-zoom-modal");
+    if (!modal) return;
+    modal.classList.add("hidden");
+}
+
+// ---------- Filter Functions ----------
+function toggleFavoritesFilter() {
+    filterFavoritesOnly = !filterFavoritesOnly;
+    const btn = document.getElementById("filter-favorites-btn");
+    if (btn) {
+        btn.classList.toggle("active", filterFavoritesOnly);
+        btn.textContent = filterFavoritesOnly ? "★ Favoritos" : "☆ Favoritos";
+    }
+    displayBlocks();
+}
+
+function clearAllFilters() {
+    document.getElementById("filter-grade").value = "";
+    document.getElementById("filter-zone").value = "";
+    document.getElementById("search-input").value = "";
+    filterFavoritesOnly = false;
+    
+    const favBtn = document.getElementById("filter-favorites-btn");
+    if (favBtn) {
+        favBtn.classList.remove("active");
+        favBtn.textContent = "☆ Favoritos";
+    }
+    
+    searchQuery = "";
+    displayBlocks();
+    showToast("Filtros limpiados");
+}
+
+// ---------- Toast Notification ----------
+function showToast(message) {
+    const toast = document.getElementById("toast-notification");
+    if (!toast) return;
+    
+    toast.textContent = message;
+    toast.classList.remove("hidden");
+    
+    setTimeout(() => {
+        toast.classList.add("hidden");
+    }, 3000);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const closeBtn = document.getElementById("close-zoom-btn");
+    const zoomModal = document.getElementById("image-zoom-modal");
+    const zoomImg = document.getElementById("zoom-image");
+    
+    if (closeBtn) {
+        closeBtn.addEventListener("click", closeImageZoom);
+    }
+    
+    if (zoomModal) {
+        zoomModal.addEventListener("click", (e) => {
+            if (e.target === zoomModal) closeImageZoom();
+        });
+    }
+    
+    if (zoomImg) {
+        let scale = 1;
+        let panning = false;
+        let pointX = 0;
+        let pointY = 0;
+        let start = { x: 0, y: 0 };
+        
+        zoomImg.addEventListener("wheel", (e) => {
+            e.preventDefault();
+            let xs = (e.offsetX) / scale;
+            let ys = (e.offsetY) / scale;
+            let delta = (e.wheelDelta > 0 || e.detail < 0) ? 1.2 : 0.8;
+            scale *= delta;
+            scale = Math.max(1, Math.min(scale, 5));
+            pointX = xs - (e.offsetX) / scale;
+            pointY = ys - (e.offsetY) / scale;
+            zoomImg.style.transform = `scale(${scale}) translate(${-pointX}px, ${-pointY}px)`;
+        }, { passive: false });
+        
+        zoomImg.addEventListener("mousedown", (e) => {
+            if (scale <= 1) return;
+            e.preventDefault();
+            start = { x: e.clientX - pointX, y: e.clientY - pointY };
+            panning = true;
+        });
+        
+        zoomImg.addEventListener("mousemove", (e) => {
+            if (!panning || scale <= 1) return;
+            e.preventDefault();
+            pointX = e.clientX - start.x;
+            pointY = e.clientY - start.y;
+            zoomImg.style.transform = `scale(${scale}) translate(${-pointX}px, ${-pointY}px)`;
+        });
+        
+        zoomImg.addEventListener("mouseup", () => {
+            panning = false;
+        });
+        
+        zoomImg.addEventListener("mouseleave", () => {
+            panning = false;
+        });
+    }
+}, { once: true });
