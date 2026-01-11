@@ -162,6 +162,29 @@ textarea {
     align-items: center;
 }
 
+/* Make header filter selects display inline/side-by-side on narrow screens */
+.home-header .filters {
+    /* prefer no wrapping and allow horizontal scroll if needed */
+    flex-wrap: nowrap;
+    overflow-x: auto;
+}
+.home-header .filters select,
+.home-header .filters .filter-btn,
+.home-header .filters .menu-btn,
+.home-header .filters #new-block-btn {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 120px;
+}
+@media (max-width: 480px) {
+    .home-header .filters {
+        gap: 8px;
+    }
+    .home-header .filters select {
+        min-width: 110px;
+    }
+}
+
 .filter-btn {
     padding: 12px 20px;
     background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
