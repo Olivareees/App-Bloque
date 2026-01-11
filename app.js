@@ -624,9 +624,11 @@ function updateStats(){
     const blocks=JSON.parse(localStorage.getItem("blocks")||"[]");
     const totalBlocks = blocks.length;
     const favoriteCount = blocks.filter(b => b.favorite).length;
-    
-    document.getElementById("stat-total").textContent = totalBlocks;
-    document.getElementById("stat-favorites").textContent = favoriteCount;
+    // Update stats only if the elements exist (prevents errors on pages without these elements)
+    const statTotalEl = document.getElementById("stat-total");
+    const statFavoritesEl = document.getElementById("stat-favorites");
+    if (statTotalEl) statTotalEl.textContent = totalBlocks;
+    if (statFavoritesEl) statFavoritesEl.textContent = favoriteCount;
 }
 
 function showViewBlockSection(){
