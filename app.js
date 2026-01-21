@@ -62,10 +62,15 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("cancel-export-btn").addEventListener("click", closeExportModal);
     document.getElementById("toggle-favorite-btn").addEventListener("click", toggleFavorite);
     
-    // Sync system listeners
-    document.getElementById("setup-file-sync-btn").addEventListener("click", setupFileSync);
-    document.getElementById("disable-file-sync-btn").addEventListener("click", disableFileSync);
-    document.getElementById("sync-indicator").addEventListener("click", showSyncStatus);
+    // Sync system listeners (con verificación)
+    const setupSyncBtn = document.getElementById("setup-file-sync-btn");
+    if (setupSyncBtn) setupSyncBtn.addEventListener("click", setupFileSync);
+    
+    const disableSyncBtn = document.getElementById("disable-file-sync-btn");
+    if (disableSyncBtn) disableSyncBtn.addEventListener("click", disableFileSync);
+    
+    const syncIndicator = document.getElementById("sync-indicator");
+    if (syncIndicator) syncIndicator.addEventListener("click", showSyncStatus);
     
     // Close export modal from close button
     const exportModalCloseBtn = document.querySelector("#export-modal .modal-close");
@@ -1041,14 +1046,17 @@ async function saveBlocks(blocks) {
 }
 
 async function setupFileSync() {
+    console.log("setupFileSync llamado");
+    
     // Verificar soporte para File System Access API
     if (!('showSaveFilePicker' in window)) {
-        alert("Tu navegador no soporta esta función. Usa Chrome o Edge en Android/iOS.");
+        alert("Tu navegador no soporta esta función. Necesitas:\n- Chrome 86+ en Android/PC\n- Edge 86+ en Android/PC\n- Safari 15.2+ en iOS\n\nActualmente no disponible en Firefox.");
         return;
     }
     
     try {
         updateSyncIndicator("syncing");
+        console.log("Abriendo selector de archivo...");
         
         // Pedir al usuario que elija dónde guardar el archivo
         const options = {
@@ -1060,6 +1068,7 @@ async function setupFileSync() {
         };
         
         fileHandle = await window.showSaveFilePicker(options);
+        console.log("Archivo seleccionado:", fileHandle.name);
         
         // Guardar los datos actuales en el archivo
         const blocks = JSON.parse(localStorage.getItem("blocks") || "[]");
@@ -1073,12 +1082,13 @@ async function setupFileSync() {
         showToast("✓ Sincronización configurada correctamente");
         updateSyncUI();
     } catch (err) {
+        console.error("Error en setupFileSync:", err);
         if (err.name !== 'AbortError') {
-            console.error("Error al configurar sincronización:", err);
             updateSyncIndicator("error");
-            showToast("✗ Error al configurar sincronización");
+            showToast("✗ Error: " + err.message);
         } else {
             updateSyncIndicator("local");
+            console.log("Usuario canceló la selección");
         }
     }
 }
