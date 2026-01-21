@@ -13,6 +13,7 @@
 
 <header>
     <div id="logo">app-bloque</div>
+    <div id="sync-indicator" class="sync-indicator sync-local" title="Estado de sincronización">💾</div>
 </header>
 
 <!-- Toast Notification -->
@@ -57,9 +58,16 @@
             </div>
             
             <div class="actions-section">
+                <h3>Sincronización</h3>
+                <p id="sync-info-text" class="sync-info">Actualmente usando almacenamiento local del navegador.</p>
+                <button id="setup-file-sync-btn" class="full-width sync-btn">📁 Configurar Archivo de Sincronización</button>
+                <button id="disable-file-sync-btn" class="full-width danger-btn" style="display:none;">✖ Desactivar Sincronización</button>
+            </div>
+            
+            <div class="actions-section">
                 <h3>Datos</h3>
-                <button id="modal-export-btn" class="full-width">Exportar Bloques</button>
-                <button id="modal-import-btn" class="full-width">Importar Bloques</button>
+                <bu<strong>Sincronización con Archivo:</strong> Guarda tus datos en un archivo de tu dispositivo. Podrás acceder a los mismos datos desde cualquier navegador.</p>
+                <p><strong>Exportar/Importar:</strong> Comparte vías con amigos o haz copias de seguridad>
                 <input type="file" id="import-file" accept=".json" style="display:none;">
             </div>
             

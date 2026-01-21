@@ -1,4 +1,4 @@
-// Mirocódromo v9.0 - Enhanced Features
+// Mirocódromo v10.0 - Enhanced Features + File Sync
 let canvas, ctx, viewCanvas, viewCtx;
 let img = new Image();
 let detectedHolds = [];
@@ -11,6 +11,11 @@ let currentLaterality = "B"; // B = Ambas (Both), L = Izquierda (Left), R = Dere
 let searchQuery = "";
 let exportBlocksCheckboxes = [];
 let filterFavoritesOnly = false;
+
+// Sistema de sincronización con archivo
+let fileHandle = null;
+let autoSyncEnabled = false;
+let syncStatus = "local"; // "local", "file", "syncing", "error"
 
 const grados = ["4","5","5+","6a","6a+","6b","6b+","6c","6c+","7a","7a+","7b","7b+"];
 const ubicaciones = [
@@ -57,6 +62,11 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("cancel-export-btn").addEventListener("click", closeExportModal);
     document.getElementById("toggle-favorite-btn").addEventListener("click", toggleFavorite);
     
+    // Sync system listeners
+    document.getElementById("setup-file-sync-btn").addEventListener("click", setupFileSync);
+    document.getElementById("disable-file-sync-btn").addEventListener("click", disableFileSync);
+    document.getElementById("sync-indicator").addEventListener("click", showSyncStatus);
+    
     // Close export modal from close button
     const exportModalCloseBtn = document.querySelector("#export-modal .modal-close");
     if(exportModalCloseBtn){
@@ -79,6 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     populateGrados();
     populateUbicaciones();
+    loadSyncSettings();
     goHome();
     // Inicialmente no permitir avanzar hasta que suban una foto
     const saveNewBtn = document.getElementById("save-new-block");
@@ -244,16 +255,6 @@ function saveCanvasHolds() {
         y: h.y,
         laterality: h.laterality || "B"
     }));
-
-    // Try to read metadata from the creation form (if present).
-    const nameEl = document.getElementById("block-name");
-    if (nameEl) currentBlock.name = nameEl.value;
-    const gradeEl = document.getElementById("block-grade");
-    if (gradeEl) currentBlock.grade = gradeEl.value;
-    const zoneEl = document.getElementById("block-zone");
-    if (zoneEl) currentBlock.zone = zoneEl.value;
-    const notesEl = document.getElementById("block-notes");
-    if (notesEl) currentBlock.notes = notesEl.value;
     
     // Inicializar favorito si es nuevo
     if(currentBlock.favorite === undefined) currentBlock.favorite = false;
@@ -263,7 +264,7 @@ function saveCanvasHolds() {
     // en todos los dispositivos que usen la app.
     const blocks = JSON.parse(localStorage.getItem("blocks") || "[]");
     if (editingIndex !== null) blocks[editingIndex] = currentBlock; else blocks.push(currentBlock);
-    localStorage.setItem("blocks", JSON.stringify(blocks));
+    saveBlocks(blocks);
 
     // Clear temporary state so user can create another block immediately
     const input = document.getElementById("photo-input");
@@ -564,7 +565,7 @@ function saveEditedBlock(){
     // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
     const blocks = JSON.parse(localStorage.getItem("blocks")||"[]");
     editingIndex!==null ? blocks[editingIndex]=currentBlock : blocks.push(currentBlock);
-    localStorage.setItem("blocks",JSON.stringify(blocks));
+    saveBlocks(blocks);
     // Limpiar estado de la creación para permitir nuevas operaciones sin refresh
     const input = document.getElementById("photo-input");
     if (input) input.value = "";
@@ -584,7 +585,7 @@ function deleteBlock(){
     // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
     const blocks=JSON.parse(localStorage.getItem("blocks")||"[]");
     blocks.splice(editingIndex,1);
-    localStorage.setItem("blocks",JSON.stringify(blocks));
+    saveBlocks(blocks);
     goHome();
 }
 
@@ -787,7 +788,7 @@ function toggleFavorite(){
     // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
     const blocks = JSON.parse(localStorage.getItem("blocks")||"[]");
     blocks[editingIndex].favorite = !blocks[editingIndex].favorite;
-    localStorage.setItem("blocks", JSON.stringify(blocks));
+    saveBlocks(blocks);
     currentBlock.favorite = blocks[editingIndex].favorite;
     
     const favBtn = document.getElementById("toggle-favorite-btn");
@@ -902,7 +903,7 @@ function importData(event){
             // Los bloques importados se FUSIONAN con los existentes (no reemplazan)
             const currentBlocks = JSON.parse(localStorage.getItem("blocks")||"[]");
             const mergedBlocks = [...currentBlocks, ...importedBlocks];
-            localStorage.setItem("blocks", JSON.stringify(mergedBlocks));
+            saveBlocks(mergedBlocks);
             
             alert("Se han importado " + importedBlocks.length + " bloques correctamente. Total de bloques: " + mergedBlocks.length);
             closeOptionsModal();
@@ -1024,9 +1025,187 @@ document.addEventListener("DOMContentLoaded", () => {
         zoomImg.addEventListener("mouseup", () => {
             panning = false;
         });
-        
-        zoomImg.addEventListener("mouseleave", () => {
-            panning = false;
-        });
     }
-}, { once: true });
+});
+
+// ========== SISTEMA DE SINCRONIZACIÓN CON ARCHIVO ==========
+
+// Función auxiliar para guardar bloques (localStorage + archivo si está habilitado)
+async function saveBlocks(blocks) {
+    localStorage.setItem("blocks", JSON.stringify(blocks));
+    
+    // Auto-sincronizar con archivo si está habilitado
+    if (autoSyncEnabled && fileHandle) {
+        await syncToFile(blocks);
+    }
+}
+
+async function setupFileSync() {
+    // Verificar soporte para File System Access API
+    if (!('showSaveFilePicker' in window)) {
+        alert("Tu navegador no soporta esta función. Usa Chrome o Edge en Android/iOS.");
+        return;
+    }
+    
+    try {
+        updateSyncIndicator("syncing");
+        
+        // Pedir al usuario que elija dónde guardar el archivo
+        const options = {
+            types: [{
+                description: 'Archivo de bloques',
+                accept: {'application/json': ['.json']},
+            }],
+            suggestedName: 'mis-bloques.json',
+        };
+        
+        fileHandle = await window.showSaveFilePicker(options);
+        
+        // Guardar los datos actuales en el archivo
+        const blocks = JSON.parse(localStorage.getItem("blocks") || "[]");
+        await syncToFile(blocks);
+        
+        // Activar sincronización automática
+        autoSyncEnabled = true;
+        localStorage.setItem("autoSyncEnabled", "true");
+        
+        updateSyncIndicator("file");
+        showToast("✓ Sincronización configurada correctamente");
+        updateSyncUI();
+    } catch (err) {
+        if (err.name !== 'AbortError') {
+            console.error("Error al configurar sincronización:", err);
+            updateSyncIndicator("error");
+            showToast("✗ Error al configurar sincronización");
+        } else {
+            updateSyncIndicator("local");
+        }
+    }
+}
+
+async function syncToFile(blocks) {
+    if (!fileHandle) return;
+    
+    try {
+        updateSyncIndicator("syncing");
+        
+        const writable = await fileHandle.createWritable();
+        await writable.write(JSON.stringify(blocks, null, 2));
+        await writable.close();
+        
+        updateSyncIndicator("file");
+    } catch (err) {
+        console.error("Error al sincronizar:", err);
+        updateSyncIndicator("error");
+        showToast("✗ Error al guardar en archivo");
+    }
+}
+
+async function loadFromFile() {
+    if (!fileHandle) return;
+    
+    try {
+        updateSyncIndicator("syncing");
+        
+        const file = await fileHandle.getFile();
+        const content = await file.text();
+        const blocks = JSON.parse(content);
+        
+        localStorage.setItem("blocks", JSON.stringify(blocks));
+        displayBlocks();
+        
+        updateSyncIndicator("file");
+        showToast("✓ Datos cargados desde archivo");
+    } catch (err) {
+        console.error("Error al cargar desde archivo:", err);
+        updateSyncIndicator("error");
+        showToast("✗ Error al cargar archivo");
+    }
+}
+
+function disableFileSync() {
+    fileHandle = null;
+    autoSyncEnabled = false;
+    localStorage.removeItem("autoSyncEnabled");
+    updateSyncIndicator("local");
+    showToast("✓ Sincronización desactivada");
+    updateSyncUI();
+}
+
+function loadSyncSettings() {
+    const savedAutoSync = localStorage.getItem("autoSyncEnabled");
+    if (savedAutoSync === "true") {
+        autoSyncEnabled = true;
+        updateSyncIndicator("file");
+        showToast("ℹ Configura el archivo de sincronización");
+    } else {
+        updateSyncIndicator("local");
+    }
+    updateSyncUI();
+}
+
+function updateSyncIndicator(status) {
+    syncStatus = status;
+    const indicator = document.getElementById("sync-indicator");
+    if (!indicator) return;
+    
+    indicator.className = "sync-indicator";
+    
+    switch(status) {
+        case "local":
+            indicator.classList.add("sync-local");
+            indicator.textContent = "💾";
+            indicator.title = "Guardado local (navegador)";
+            break;
+        case "file":
+            indicator.classList.add("sync-file");
+            indicator.textContent = "☁️";
+            indicator.title = "Sincronizado con archivo";
+            break;
+        case "syncing":
+            indicator.classList.add("sync-syncing");
+            indicator.textContent = "⟳";
+            indicator.title = "Sincronizando...";
+            break;
+        case "error":
+            indicator.classList.add("sync-error");
+            indicator.textContent = "⚠️";
+            indicator.title = "Error de sincronización";
+            break;
+    }
+}
+
+function showSyncStatus() {
+    let message = "";
+    switch(syncStatus) {
+        case "local":
+            message = "Usando almacenamiento local del navegador. Los datos solo están en este navegador.";
+            break;
+        case "file":
+            message = "Sincronizado con archivo. Tus datos se guardan automáticamente en el archivo seleccionado.";
+            break;
+        case "syncing":
+            message = "Sincronizando tus datos...";
+            break;
+        case "error":
+            message = "Error de sincronización. Verifica que el archivo sea accesible.";
+            break;
+    }
+    alert(message);
+}
+
+function updateSyncUI() {
+    const setupBtn = document.getElementById("setup-file-sync-btn");
+    const disableBtn = document.getElementById("disable-file-sync-btn");
+    const syncInfo = document.getElementById("sync-info-text");
+    
+    if (autoSyncEnabled) {
+        if (setupBtn) setupBtn.style.display = "none";
+        if (disableBtn) disableBtn.style.display = "block";
+        if (syncInfo) syncInfo.textContent = "Los datos se guardan automáticamente en el archivo seleccionado.";
+    } else {
+        if (setupBtn) setupBtn.style.display = "block";
+        if (disableBtn) disableBtn.style.display = "none";
+        if (syncInfo) syncInfo.textContent = "Actualmente usando almacenamiento local del navegador.";
+    }
+}
