@@ -1,4 +1,4 @@
-// Mirocódromo v10.0 - Enhanced Features + File Sync
+// Mirocódromo v10.0 - Enhanced Features
 let canvas, ctx, viewCanvas, viewCtx;
 let img = new Image();
 let detectedHolds = [];
@@ -11,11 +11,6 @@ let currentLaterality = "B"; // B = Ambas (Both), L = Izquierda (Left), R = Dere
 let searchQuery = "";
 let exportBlocksCheckboxes = [];
 let filterFavoritesOnly = false;
-
-// Sistema de sincronización con archivo
-let fileHandle = null;
-let autoSyncEnabled = false;
-let syncStatus = "local"; // "local", "file", "syncing", "error"
 
 const grados = ["4","5","5+","6a","6a+","6b","6b+","6c","6c+","7a","7a+","7b","7b+"];
 const ubicaciones = [
@@ -62,16 +57,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("cancel-export-btn").addEventListener("click", closeExportModal);
     document.getElementById("toggle-favorite-btn").addEventListener("click", toggleFavorite);
     
-    // Sync system listeners (con verificación)
-    const setupSyncBtn = document.getElementById("setup-file-sync-btn");
-    if (setupSyncBtn) setupSyncBtn.addEventListener("click", setupFileSync);
-    
-    const disableSyncBtn = document.getElementById("disable-file-sync-btn");
-    if (disableSyncBtn) disableSyncBtn.addEventListener("click", disableFileSync);
-    
-    const syncIndicator = document.getElementById("sync-indicator");
-    if (syncIndicator) syncIndicator.addEventListener("click", showSyncStatus);
-    
     // Close export modal from close button
     const exportModalCloseBtn = document.querySelector("#export-modal .modal-close");
     if(exportModalCloseBtn){
@@ -104,7 +89,6 @@ document.addEventListener("DOMContentLoaded", () => {
 // ---------- Selects ----------
 function populateGrados() {
     const selects = [
-        document.getElementById("filter-grade"),
         document.getElementById("block-grade"),
         document.getElementById("edit-block-grade")
     ];
@@ -279,11 +263,6 @@ function saveCanvasHolds() {
     // Guardar de forma síncrona primero
     localStorage.setItem("blocks", JSON.stringify(blocks));
     
-    // Sincronizar con archivo en segundo plano si está habilitado
-    if (autoSyncEnabled && fileHandle) {
-        syncToFile(blocks).catch(err => console.error("Error al sincronizar:", err));
-    }
-
     // Clear temporary state so user can create another block immediately
     const input = document.getElementById("photo-input");
     if (input) input.value = "";
@@ -585,9 +564,7 @@ function saveEditedBlock(){
     const blocks = JSON.parse(localStorage.getItem("blocks")||"[]");
     editingIndex!==null ? blocks[editingIndex]=currentBlock : blocks.push(currentBlock);
     localStorage.setItem("blocks", JSON.stringify(blocks));
-    if (autoSyncEnabled && fileHandle) {
-        syncToFile(blocks).catch(err => console.error("Error al sincronizar:", err));
-    }
+    
     // Limpiar estado de la creación para permitir nuevas operaciones sin refresh
     const input = document.getElementById("photo-input");
     if (input) input.value = "";
@@ -608,16 +585,11 @@ function deleteBlock(){
     const blocks=JSON.parse(localStorage.getItem("blocks")||"[]");
     blocks.splice(editingIndex,1);
     localStorage.setItem("blocks", JSON.stringify(blocks));
-    if (autoSyncEnabled && fileHandle) {
-        syncToFile(blocks).catch(err => console.error("Error al sincronizar:", err));
-    }
     goHome();
 }
 
 // ---------- Grid / Vista ----------
 function displayBlocks(){
-    const grid=document.getElementById("blocks-grid");
-    grid.innerHTML="";
     const blocks=JSON.parse(localStorage.getItem("blocks")||"[]");
     const g=document.getElementById("filter-grade").value;
     const z=document.getElementById("filter-zone").value;
@@ -824,10 +796,7 @@ function toggleFavorite(){
         favBtn.classList.add("active");
         favBtn.textContent = "★ Quitar Favorito";
     } else {
-        favBtn.classList.remove("active");
-        favBtn.textContent = "☆ Marcar Favorito";
-    }
-    goHome();
+        favBtn.classList.remove("active");oHome();
 }
 
 function openExportModal(){
@@ -942,9 +911,6 @@ function importData(event){
         } catch(err) {
             alert("Error al leer el archivo: " + err.message);
         }
-    };
-    reader.readAsText(file);
-}
 
 // ---------- Zoom Image Functions ----------
 function openImageZoom(imageSrc) {
@@ -1058,180 +1024,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
-
-// ========== SISTEMA DE SINCRONIZACIÓN CON ARCHIVO ==========
-
-async function setupFileSync() {
-    console.log("setupFileSync llamado");
-    
-    // Verificar soporte para File System Access API
-    if (!('showSaveFilePicker' in window)) {
-        alert("Tu navegador no soporta esta función. Necesitas:\n- Chrome 86+ en Android/PC\n- Edge 86+ en Android/PC\n- Safari 15.2+ en iOS\n\nActualmente no disponible en Firefox.");
-        return;
-    }
-    
-    try {
-        updateSyncIndicator("syncing");
-        console.log("Abriendo selector de archivo...");
-        
-        // Pedir al usuario que elija dónde guardar el archivo
-        const options = {
-            types: [{
-                description: 'Archivo de bloques',
-                accept: {'application/json': ['.json']},
-            }],
-            suggestedName: 'mis-bloques.json',
-        };
-        
-        fileHandle = await window.showSaveFilePicker(options);
-        console.log("Archivo seleccionado:", fileHandle.name);
-        
-        // Guardar los datos actuales en el archivo
-        const blocks = JSON.parse(localStorage.getItem("blocks") || "[]");
-        await syncToFile(blocks);
-        
-        // Activar sincronización automática
-        autoSyncEnabled = true;
-        localStorage.setItem("autoSyncEnabled", "true");
-        
-        updateSyncIndicator("file");
-        showToast("✓ Sincronización configurada correctamente");
-        updateSyncUI();
-    } catch (err) {
-        console.error("Error en setupFileSync:", err);
-        if (err.name !== 'AbortError') {
-            updateSyncIndicator("error");
-            showToast("✗ Error: " + err.message);
-        } else {
-            updateSyncIndicator("local");
-            console.log("Usuario canceló la selección");
-        }
-    }
 }
-
-async function syncToFile(blocks) {
-    if (!fileHandle) return;
-    
-    try {
-        updateSyncIndicator("syncing");
-        
-        const writable = await fileHandle.createWritable();
-        await writable.write(JSON.stringify(blocks, null, 2));
-        await writable.close();
-        
-        updateSyncIndicator("file");
-    } catch (err) {
-        console.error("Error al sincronizar:", err);
-        updateSyncIndicator("error");
-        showToast("✗ Error al guardar en archivo");
-    }
 }
-
-async function loadFromFile() {
-    if (!fileHandle) return;
-    
-    try {
-        updateSyncIndicator("syncing");
-        
-        const file = await fileHandle.getFile();
-        const content = await file.text();
-        const blocks = JSON.parse(content);
-        
-        localStorage.setItem("blocks", JSON.stringify(blocks));
-        displayBlocks();
-        
-        updateSyncIndicator("file");
-        showToast("✓ Datos cargados desde archivo");
-    } catch (err) {
-        console.error("Error al cargar desde archivo:", err);
-        updateSyncIndicator("error");
-        showToast("✗ Error al cargar archivo");
-    }
-}
-
-function disableFileSync() {
-    fileHandle = null;
-    autoSyncEnabled = false;
-    localStorage.removeItem("autoSyncEnabled");
-    updateSyncIndicator("local");
-    showToast("✓ Sincronización desactivada");
-    updateSyncUI();
-}
-
-function loadSyncSettings() {
-    const savedAutoSync = localStorage.getItem("autoSyncEnabled");
-    if (savedAutoSync === "true") {
-        autoSyncEnabled = true;
-        updateSyncIndicator("file");
-        showToast("ℹ Configura el archivo de sincronización");
-    } else {
-        updateSyncIndicator("local");
-    }
-    updateSyncUI();
-}
-
-function updateSyncIndicator(status) {
-    syncStatus = status;
-    const indicator = document.getElementById("sync-indicator");
-    if (!indicator) return;
-    
-    indicator.className = "sync-indicator";
-    
-    switch(status) {
-        case "local":
-            indicator.classList.add("sync-local");
-            indicator.textContent = "💾";
-            indicator.title = "Guardado local (navegador)";
-            break;
-        case "file":
-            indicator.classList.add("sync-file");
-            indicator.textContent = "☁️";
-            indicator.title = "Sincronizado con archivo";
-            break;
-        case "syncing":
-            indicator.classList.add("sync-syncing");
-            indicator.textContent = "⟳";
-            indicator.title = "Sincronizando...";
-            break;
-        case "error":
-            indicator.classList.add("sync-error");
-            indicator.textContent = "⚠️";
-            indicator.title = "Error de sincronización";
-            break;
-    }
-}
-
-function showSyncStatus() {
-    let message = "";
-    switch(syncStatus) {
-        case "local":
-            message = "Usando almacenamiento local del navegador. Los datos solo están en este navegador.";
-            break;
-        case "file":
-            message = "Sincronizado con archivo. Tus datos se guardan automáticamente en el archivo seleccionado.";
-            break;
-        case "syncing":
-            message = "Sincronizando tus datos...";
-            break;
-        case "error":
-            message = "Error de sincronización. Verifica que el archivo sea accesible.";
-            break;
-    }
-    alert(message);
-}
-
-function updateSyncUI() {
-    const setupBtn = document.getElementById("setup-file-sync-btn");
-    const disableBtn = document.getElementById("disable-file-sync-btn");
-    const syncInfo = document.getElementById("sync-info-text");
-    
-    if (autoSyncEnabled) {
-        if (setupBtn) setupBtn.style.display = "none";
-        if (disableBtn) disableBtn.style.display = "block";
-        if (syncInfo) syncInfo.textContent = "Los datos se guardan automáticamente en el archivo seleccionado.";
-    } else {
-        if (setupBtn) setupBtn.style.display = "block";
-        if (disableBtn) disableBtn.style.display = "none";
-        if (syncInfo) syncInfo.textContent = "Actualmente usando almacenamiento local del navegador.";
-    }
 }
