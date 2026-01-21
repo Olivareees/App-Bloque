@@ -271,6 +271,20 @@ function saveCanvasHolds() {
     img.src = "";
     selectedHolds = [];
     detectedHolds = [];
+    
+    // Limpiar el formulario completamente
+    const nameEl2 = document.getElementById("block-name");
+    if (nameEl2) nameEl2.value = "";
+    const gradeEl2 = document.getElementById("block-grade");
+    if (gradeEl2) gradeEl2.selectedIndex = 0;
+    const zoneEl2 = document.getElementById("block-zone");
+    if (zoneEl2) zoneEl2.selectedIndex = 0;
+    const notesEl2 = document.getElementById("block-notes");
+    if (notesEl2) notesEl2.value = "";
+    
+    // Resetear currentBlock y editingIndex
+    currentBlock = {};
+    editingIndex = null;
 
     // Show success notification
     showToast("✓ Presas guardadas correctamente");

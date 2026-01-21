@@ -11,6 +11,8 @@ body {
     color: #1e293b;
     min-height: 100vh;
     background-attachment: fixed;
+    overflow-x: hidden; /* Evitar scroll horizontal en móviles */
+    -webkit-overflow-scrolling: touch; /* Scroll suave en iOS */
 }
 
 header {
@@ -56,6 +58,8 @@ button {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
     border: 1px solid rgba(59, 130, 246, 0.5);
+    -webkit-tap-highlight-color: transparent; /* Quitar resaltado azul en iOS */
+    touch-action: manipulation; /* Mejorar respuesta táctil */
 }
 
 button:hover {
@@ -66,6 +70,14 @@ button:hover {
 
 button:active {
     transform: translateY(0);
+}
+
+/* En móviles, área táctil más grande */
+@media (max-width: 768px) {
+    button {
+        min-height: 44px; /* Tamaño mínimo recomendado para toques táctiles */
+        padding: 12px 20px;
+    }
 }
 
 main {
@@ -869,6 +881,16 @@ canvas {
     border-radius: 12px;
     background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    touch-action: none; /* Mejor control táctil en móviles */
+    cursor: pointer;
+}
+
+@media (max-width: 768px) {
+    canvas {
+        margin: 16px auto;
+        border-width: 1px;
+        max-width: 100%;
+    }
 }
 
 #canvas-actions,
@@ -1057,6 +1079,49 @@ canvas {
     }
 
     #blocks-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    
+    /* Canvas más pequeño en móviles */
+    canvas {
+        margin: 16px auto;
+        border-width: 1px;
+    }
+    
+    /* Botones de canvas apilados */
+    #canvas-actions,
+    #new-block-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    #canvas-actions button,
+    #new-block-actions button {
+        width: 100%;
+        margin: 4px 0;
+    }
+    
+    /* Formularios ocupan todo el ancho */
+    input[type="text"],
+    input[type="file"],
+    select,
+    textarea {
+        max-width: 100%;
+    }
+    
+    /* Modal a pantalla completa en móviles pequeños */
+    .modal-content,
+    .export-modal-content {
+        width: 100%;
+        height: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+    
+    /* Photo wrapper más pequeño */
+    #photo-wrapper {
+        width: 120px;
+        height: 120px;
     }
 }
