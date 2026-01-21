@@ -254,6 +254,10 @@ function editHolds() {
 }
 
 function saveCanvasHolds() {
+    console.log("saveCanvasHolds llamado");
+    console.log("currentBlock:", currentBlock);
+    console.log("selectedHolds:", selectedHolds);
+    
     // `selectedHolds` stores normalized coordinates (0..1) and laterality.
     currentBlock.holds = selectedHolds.map(h => ({ 
         x: h.x, 
@@ -269,7 +273,16 @@ function saveCanvasHolds() {
     // en todos los dispositivos que usen la app.
     const blocks = JSON.parse(localStorage.getItem("blocks") || "[]");
     if (editingIndex !== null) blocks[editingIndex] = currentBlock; else blocks.push(currentBlock);
-    saveBlocks(blocks);
+    
+    console.log("Guardando bloques:", blocks);
+    
+    // Guardar de forma síncrona primero
+    localStorage.setItem("blocks", JSON.stringify(blocks));
+    
+    // Sincronizar con archivo en segundo plano si está habilitado
+    if (autoSyncEnabled && fileHandle) {
+        syncToFile(blocks).catch(err => console.error("Error al sincronizar:", err));
+    }
 
     // Clear temporary state so user can create another block immediately
     const input = document.getElementById("photo-input");
@@ -292,6 +305,7 @@ function saveCanvasHolds() {
     currentBlock = {};
     editingIndex = null;
 
+    console.log("Bloque guardado exitosamente");
     // Show success notification
     showToast("✓ Presas guardadas correctamente");
     
@@ -570,7 +584,10 @@ function saveEditedBlock(){
     // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
     const blocks = JSON.parse(localStorage.getItem("blocks")||"[]");
     editingIndex!==null ? blocks[editingIndex]=currentBlock : blocks.push(currentBlock);
-    saveBlocks(blocks);
+    localStorage.setItem("blocks", JSON.stringify(blocks));
+    if (autoSyncEnabled && fileHandle) {
+        syncToFile(blocks).catch(err => console.error("Error al sincronizar:", err));
+    }
     // Limpiar estado de la creación para permitir nuevas operaciones sin refresh
     const input = document.getElementById("photo-input");
     if (input) input.value = "";
@@ -590,7 +607,10 @@ function deleteBlock(){
     // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
     const blocks=JSON.parse(localStorage.getItem("blocks")||"[]");
     blocks.splice(editingIndex,1);
-    saveBlocks(blocks);
+    localStorage.setItem("blocks", JSON.stringify(blocks));
+    if (autoSyncEnabled && fileHandle) {
+        syncToFile(blocks).catch(err => console.error("Error al sincronizar:", err));
+    }
     goHome();
 }
 
@@ -793,7 +813,10 @@ function toggleFavorite(){
     // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
     const blocks = JSON.parse(localStorage.getItem("blocks")||"[]");
     blocks[editingIndex].favorite = !blocks[editingIndex].favorite;
-    saveBlocks(blocks);
+    localStorage.setItem("blocks", JSON.stringify(blocks));
+    if (autoSyncEnabled && fileHandle) {
+        syncToFile(blocks).catch(err => console.error("Error al sincronizar:", err));
+    }
     currentBlock.favorite = blocks[editingIndex].favorite;
     
     const favBtn = document.getElementById("toggle-favorite-btn");
@@ -908,7 +931,10 @@ function importData(event){
             // Los bloques importados se FUSIONAN con los existentes (no reemplazan)
             const currentBlocks = JSON.parse(localStorage.getItem("blocks")||"[]");
             const mergedBlocks = [...currentBlocks, ...importedBlocks];
-            saveBlocks(mergedBlocks);
+            localStorage.setItem("blocks", JSON.stringify(mergedBlocks));
+            if (autoSyncEnabled && fileHandle) {
+                syncToFile(mergedBlocks).catch(err => console.error("Error al sincronizar:", err));
+            }
             
             alert("Se han importado " + importedBlocks.length + " bloques correctamente. Total de bloques: " + mergedBlocks.length);
             closeOptionsModal();
@@ -1034,16 +1060,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ========== SISTEMA DE SINCRONIZACIÓN CON ARCHIVO ==========
-
-// Función auxiliar para guardar bloques (localStorage + archivo si está habilitado)
-async function saveBlocks(blocks) {
-    localStorage.setItem("blocks", JSON.stringify(blocks));
-    
-    // Auto-sincronizar con archivo si está habilitado
-    if (autoSyncEnabled && fileHandle) {
-        await syncToFile(blocks);
-    }
-}
 
 async function setupFileSync() {
     console.log("setupFileSync llamado");
