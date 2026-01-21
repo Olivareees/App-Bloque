@@ -79,7 +79,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     populateGrados();
     populateUbicaciones();
-    loadSyncSettings();
     goHome();
     // Inicialmente no permitir avanzar hasta que suban una foto
     const saveNewBtn = document.getElementById("save-new-block");
@@ -89,6 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // ---------- Selects ----------
 function populateGrados() {
     const selects = [
+        document.getElementById("filter-grade"),
         document.getElementById("block-grade"),
         document.getElementById("edit-block-grade")
     ];
@@ -786,9 +786,6 @@ function toggleFavorite(){
     const blocks = JSON.parse(localStorage.getItem("blocks")||"[]");
     blocks[editingIndex].favorite = !blocks[editingIndex].favorite;
     localStorage.setItem("blocks", JSON.stringify(blocks));
-    if (autoSyncEnabled && fileHandle) {
-        syncToFile(blocks).catch(err => console.error("Error al sincronizar:", err));
-    }
     currentBlock.favorite = blocks[editingIndex].favorite;
     
     const favBtn = document.getElementById("toggle-favorite-btn");
@@ -796,7 +793,11 @@ function toggleFavorite(){
         favBtn.classList.add("active");
         favBtn.textContent = "★ Quitar Favorito";
     } else {
-        favBtn.classList.remove("active");oHome();
+        favBtn.classList.remove("active");
+        favBtn.textContent = "☆ Marcar Favorito";
+    }
+    
+    displayBlocks();
 }
 
 function openExportModal(){
@@ -901,9 +902,6 @@ function importData(event){
             const currentBlocks = JSON.parse(localStorage.getItem("blocks")||"[]");
             const mergedBlocks = [...currentBlocks, ...importedBlocks];
             localStorage.setItem("blocks", JSON.stringify(mergedBlocks));
-            if (autoSyncEnabled && fileHandle) {
-                syncToFile(mergedBlocks).catch(err => console.error("Error al sincronizar:", err));
-            }
             
             alert("Se han importado " + importedBlocks.length + " bloques correctamente. Total de bloques: " + mergedBlocks.length);
             closeOptionsModal();
@@ -911,6 +909,9 @@ function importData(event){
         } catch(err) {
             alert("Error al leer el archivo: " + err.message);
         }
+    };
+    reader.readAsText(file);
+}
 
 // ---------- Zoom Image Functions ----------
 function openImageZoom(imageSrc) {
@@ -1022,8 +1023,9 @@ document.addEventListener("DOMContentLoaded", () => {
         zoomImg.addEventListener("mouseup", () => {
             panning = false;
         });
+
+        zoomImg.addEventListener("mouseleave", () => {
+            panning = false;
+        });
     }
-});
-}
-}
-}
+}, { once: true });
