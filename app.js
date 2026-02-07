@@ -183,6 +183,14 @@ function setBlocks(blocks) {
     blocksData = blocks;
     saveDataToStorage();
 }
+
+function populateUbicaciones() {
+    const selects = [
+        document.getElementById("filter-zone"),
+        document.getElementById("block-zone"),
+        document.getElementById("edit-block-zone")
+    ];
+    selects.forEach(sel => {
         sel.innerHTML = '<option value="">Todas las zonas</option>';
         ubicaciones.forEach(u => {
             const opt = document.createElement("option");
