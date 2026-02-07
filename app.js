@@ -11,6 +11,8 @@ let currentLaterality = "B"; // B = Ambas (Both), L = Izquierda (Left), R = Dere
 let searchQuery = "";
 let exportBlocksCheckboxes = [];
 let filterFavoritesOnly = false;
+let blocksData = []; // Datos en memoria
+let storageAvailable = true; // Check si localStorage funciona
 
 const grados = ["4","5","5+","6a","6a+","6b","6b+","6c","6c+","7a","7a+","7b","7b+"];
 const ubicaciones = [
@@ -24,6 +26,12 @@ document.addEventListener("DOMContentLoaded", () => {
     ctx = canvas.getContext("2d");
     viewCanvas = document.getElementById("view-block-canvas");
     viewCtx = viewCanvas.getContext("2d");
+
+    // Verificar si localStorage está disponible
+    checkStorageAvailability();
+    
+    // Cargar datos al inicio
+    loadDataFromStorage();
 
     document.getElementById("photo-input").addEventListener("change", handlePhotoUpload);
     document.getElementById("save-new-block").addEventListener("click", goToCanvasNewBlock);
@@ -47,11 +55,19 @@ document.addEventListener("DOMContentLoaded", () => {
         if(e.target.id === "options-modal") closeOptionsModal();
     });
     document.getElementById("modal-export-btn").addEventListener("click", openExportModal);
-    document.getElementById("modal-import-btn").addEventListener("click", () => {
+    document.getElementById("modal-load-btn").addEventListener("click", () => {
         document.getElementById("import-file").click();
     });
-    document.getElementById("modal-backup-btn").addEventListener("click", downloadFullBackup);
+    document.getElementById("modal-save-btn").addEventListener("click", saveDataToDevice);
     document.getElementById("import-file").addEventListener("change", importData);
+    
+    // Botón de cargar en warning
+    const loadFileBtn = document.getElementById("load-file-btn");
+    if(loadFileBtn) {
+        loadFileBtn.addEventListener("click", () => {
+            document.getElementById("import-file").click();
+        });
+    }
     document.getElementById("select-all-btn").addEventListener("click", selectAllExportBlocks);
     document.getElementById("deselect-all-btn").addEventListener("click", deselectAllExportBlocks);
     document.getElementById("confirm-export-btn").addEventListener("click", confirmExport);
@@ -104,13 +120,69 @@ function populateGrados() {
     });
 }
 
-function populateUbicaciones() {
-    const selects = [
-        document.getElementById("filter-zone"),
-        document.getElementById("block-zone"),
-        document.getElementById("edit-block-zone")
-    ];
-    selects.forEach(sel => {
+// ---------- Storage Management ----------
+function checkStorageAvailability() {
+    try {
+        const test = '__storage_test__';
+        localStorage.setItem(test, test);
+        localStorage.removeItem(test);
+        storageAvailable = true;
+        hideStorageWarning();
+    } catch(e) {
+        storageAvailable = false;
+        showStorageWarning();
+        console.warn("localStorage no disponible:", e);
+    }
+}
+
+function showStorageWarning() {
+    const warning = document.getElementById("storage-warning");
+    if(warning) warning.classList.remove("hidden");
+}
+
+function hideStorageWarning() {
+    const warning = document.getElementById("storage-warning");
+    if(warning) warning.classList.add("hidden");
+}
+
+function loadDataFromStorage() {
+    try {
+        if(storageAvailable) {
+            const stored = localStorage.getItem("blocks");
+            if(stored) {
+                blocksData = JSON.parse(stored);
+                console.log(`✓ ${blocksData.length} bloques cargados desde localStorage`);
+            }
+        }
+    } catch(e) {
+        console.error("Error cargando datos:", e);
+        blocksData = [];
+    }
+}
+
+function saveDataToStorage() {
+    try {
+        if(storageAvailable) {
+            localStorage.setItem("blocks", JSON.stringify(blocksData));
+            console.log(`✓ ${blocksData.length} bloques guardados en localStorage`);
+            return true;
+        }
+    } catch(e) {
+        console.error("Error guardando en localStorage:", e);
+        showStorageWarning();
+        return false;
+    }
+    return false;
+}
+
+function getBlocks() {
+    return blocksData;
+}
+
+function setBlocks(blocks) {
+    blocksData = blocks;
+    saveDataToStorage();
+}
         sel.innerHTML = '<option value="">Todas las zonas</option>';
         ubicaciones.forEach(u => {
             const opt = document.createElement("option");
@@ -253,16 +325,23 @@ function saveCanvasHolds() {
     // Inicializar favorito si es nuevo
     if(currentBlock.favorite === undefined) currentBlock.favorite = false;
 
-    // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
-    // Esta clave es usada en todo el código. Cambiarla romperá la persistencia de datos
-    // en todos los dispositivos que usen la app.
-    const blocks = JSON.parse(localStorage.getItem("blocks") || "[]");
-    if (editingIndex !== null) blocks[editingIndex] = currentBlock; else blocks.push(currentBlock);
+    // Usar el nuevo sistema de almacenamiento
+    const blocks = getBlocks();
+    if (editingIndex !== null) {
+        blocks[editingIndex] = currentBlock;
+    } else {
+        blocks.push(currentBlock);
+    }
     
     console.log("Guardando bloques:", blocks);
     
-    // Guardar de forma síncrona primero
-    localStorage.setItem("blocks", JSON.stringify(blocks));
+    // Guardar usando el sistema mejorado
+    setBlocks(blocks);
+    
+    // Si localStorage no está disponible, forzar descarga
+    if(!storageAvailable) {
+        autoSaveToDevice(blocks);
+    }
     
     // Clear temporary state so user can create another block immediately
     const input = document.getElementById("photo-input");
@@ -561,10 +640,10 @@ function saveEditedBlock(){
     currentBlock.zone = document.getElementById("edit-block-zone").value;
     currentBlock.notes = document.getElementById("edit-block-notes").value;
 
-    // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
-    const blocks = JSON.parse(localStorage.getItem("blocks")||"[]");
+    // Usar el nuevo sistema de almacenamiento
+    const blocks = getBlocks();
     editingIndex!==null ? blocks[editingIndex]=currentBlock : blocks.push(currentBlock);
-    localStorage.setItem("blocks", JSON.stringify(blocks));
+    setBlocks(blocks);
     
     // Limpiar estado de la creación para permitir nuevas operaciones sin refresh
     const input = document.getElementById("photo-input");
@@ -582,16 +661,17 @@ function saveEditedBlock(){
 function deleteBlock(){
     if(editingIndex===null) return;
     if(!confirm("¿Seguro que quieres borrar este bloque?")) return;
-    // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
-    const blocks=JSON.parse(localStorage.getItem("blocks")||"[]");
+    
+    const blocks = getBlocks();
     blocks.splice(editingIndex,1);
-    localStorage.setItem("blocks", JSON.stringify(blocks));
+    setBlocks(blocks);
+    
     goHome();
 }
 
 // ---------- Grid / Vista ----------
 function displayBlocks(){
-    const blocks=JSON.parse(localStorage.getItem("blocks")||"[]");
+    const blocks = getBlocks();
     const g=document.getElementById("filter-grade").value;
     const z=document.getElementById("filter-zone").value;
     
@@ -773,7 +853,7 @@ function closeOptionsModal(){
 }
 
 function updateModalStats(){
-    const blocks = JSON.parse(localStorage.getItem("blocks")||"[]");
+    const blocks = getBlocks();
     const totalBlocks = blocks.length;
     const favoriteCount = blocks.filter(b => b.favorite).length;
     
@@ -783,10 +863,10 @@ function updateModalStats(){
 
 function toggleFavorite(){
     if(editingIndex === null) return;
-    // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
-    const blocks = JSON.parse(localStorage.getItem("blocks")||"[]");
+    
+    const blocks = getBlocks();
     blocks[editingIndex].favorite = !blocks[editingIndex].favorite;
-    localStorage.setItem("blocks", JSON.stringify(blocks));
+    setBlocks(blocks);
     currentBlock.favorite = blocks[editingIndex].favorite;
     
     const favBtn = document.getElementById("toggle-favorite-btn");
@@ -802,7 +882,7 @@ function toggleFavorite(){
 }
 
 function openExportModal(){
-    const blocks = JSON.parse(localStorage.getItem("blocks")||"[]");
+    const blocks = getBlocks();
     const blocksList = document.getElementById("export-blocks-list");
     blocksList.innerHTML = "";
     exportBlocksCheckboxes = [];
@@ -864,8 +944,7 @@ function confirmExport(){
         return;
     }
     
-    // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
-    const allBlocks = JSON.parse(localStorage.getItem("blocks")||"[]");
+    const allBlocks = getBlocks();
     const selectedBlocks = selectedIndices.map(idx => allBlocks[idx]);
     
     const dataStr = JSON.stringify(selectedBlocks, null, 2);
@@ -885,13 +964,19 @@ function confirmExport(){
     showToast(`✓ ${blockCount} bloques exportados correctamente`);
 }
 
-// Función para descargar respaldo completo (iOS friendly)
-function downloadFullBackup(){
-    // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
-    const allBlocks = JSON.parse(localStorage.getItem("blocks")||"[]");
+// Función para guardar automáticamente en caso de error de storage
+function autoSaveToDevice(blocks) {
+    const confirmed = confirm("Safari no puede guardar los datos. ¿Descargar archivo de respaldo automáticamente?");
+    if(!confirmed) return;
+    saveDataToDevice();
+}
+
+// Función para descargar los datos al dispositivo
+function saveDataToDevice(){
+    const allBlocks = getBlocks();
     
     if(allBlocks.length === 0){
-        alert("No tienes bloques para respaldar. Crea algunos bloques primero.");
+        alert("No tienes bloques para guardar. Crea algunos bloques primero.");
         return;
     }
     
@@ -901,23 +986,20 @@ function downloadFullBackup(){
     const link = document.createElement("a");
     link.href = url;
     
-    // Formato: app-bloque-RESPALDO-COMPLETO-[cantidad]-[fecha].json
     const timestamp = new Date().toISOString().split('T')[0];
     const blockCount = allBlocks.length;
-    link.download = `app-bloque-RESPALDO-COMPLETO-${blockCount}-bloques-${timestamp}.json`;
+    link.download = `app-bloque-datos-${blockCount}-bloques-${timestamp}.json`;
     
-    // Para iOS Safari: forzar el atributo download
     link.setAttribute('download', link.download);
     
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
-    // Limpiar el URL después de un pequeño retraso para asegurar descarga en iOS
     setTimeout(() => URL.revokeObjectURL(url), 100);
     
     closeOptionsModal();
-    showToast(`✓ Respaldo de ${blockCount} bloques descargado. En iPhone, elige dónde guardarlo.`);
+    showToast(`✓ ${blockCount} bloques guardados. Elige dónde guardarlo en tu iPhone.`);
 }
 
 function importData(event){
@@ -941,19 +1023,16 @@ function importData(event){
                 return;
             }
             
-            // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
-            // Los bloques importados se FUSIONAN con los existentes (no reemplazan)
-            const currentBlocks = JSON.parse(localStorage.getItem("blocks")||"[]");
-            const mergedBlocks = [...currentBlocks, ...validBlocks];
-            localStorage.setItem("blocks", JSON.stringify(mergedBlocks));
+            // REEMPLAZAR todos los bloques (no fusionar)
+            setBlocks(validBlocks);
             
             closeOptionsModal();
-            showToast(`✓ ${validBlocks.length} bloques importados. Total: ${mergedBlocks.length}`);
+            showToast(`✓ ${validBlocks.length} bloques cargados correctamente`);
             
             // Recargar después de mostrar el toast
             setTimeout(() => {
-                location.reload();
-            }, 1500);
+                displayBlocks();
+            }, 500);
         } catch(err) {
             alert("Error al leer el archivo: " + err.message + "\n\nAsegúrate de que el archivo no esté corrupto.");
         }

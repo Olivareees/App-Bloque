@@ -22,14 +22,17 @@
     <div class="home-header">
         <div class="header-top">
             <button id="options-btn" class="menu-btn">☰</button>
-            <button id="new-block-btn">+ Crear Bloque</button>
-            <input type="text" id="search-input" placeholder="Buscar por nombre, grado (ej: 6a) o zona...">
+            <button id="new-block-btn" class="btn-create">+</button>
+            <input type="text" id="search-input" placeholder="Buscar...">
         </div>
-        <div class="filters">
+        <div class="filters-compact">
             <select id="filter-grade"></select>
             <select id="filter-zone"></select>
-            <button id="filter-favorites-btn" class="filter-btn">☆ Favoritos</button>
+            <button id="filter-favorites-btn" class="filter-btn-compact">★</button>
         </div>
+    </div>
+    <div id="storage-warning" class="storage-warning hidden">
+        ⚠️ Safari Modo Privado detectado. Los datos no se guardarán. <button id="load-file-btn" class="btn-load-file">Cargar Archivo</button>
     </div>
     <div id="blocks-grid"></div>
 </section>
@@ -57,18 +60,20 @@
             </div>
             
             <div class="actions-section">
-                <h3>Sincronización</h3>
-                <button id="modal-export-btn" class="full-width">📤 Exportar Bloques</button>
-                <button id="modal-import-btn" class="full-width">📥 Importar Bloques</button>
-                <button id="modal-backup-btn" class="full-width backup-btn">💾 Guardar Respaldo Completo</button>
+                <h3>Gestión de Datos</h3>
+                <button id="modal-load-btn" class="full-width load-btn">📂 Cargar Archivo de Datos</button>
+                <button id="modal-save-btn" class="full-width save-btn">💾 Guardar en Dispositivo</button>
+                <button id="modal-export-btn" class="full-width">📤 Exportar Selección</button>
                 <input type="file" id="import-file" accept=".json" style="display:none;">
+                <p class="info-text">💡 Guarda frecuentemente para no perder datos</p>
             </div>
             
             <div class="info-section">
                 <h3>Información</h3>
+                <p><strong>� Cargar:</strong> Abre tu archivo de datos guardado anteriormente.</p>
+                <p><strong>💾 Guardar:</strong> Descarga todos tus bloques. Elige dónde guardarlo en tu iPhone.</p>
                 <p><strong>📤 Exportar:</strong> Selecciona bloques específicos para compartir.</p>
-                <p><strong>📥 Importar:</strong> Carga bloques compartidos (se fusionan con los existentes).</p>
-                <p><strong>💾 Respaldo Completo:</strong> Descarga TODOS tus bloques automáticamente. En iPhone, elige la carpeta donde guardar (Archivos, iCloud Drive, etc.).</p>
+                <p><strong>⚠️ IMPORTANTE:</strong> En iPhone, guarda frecuentemente ya que Safari puede borrar los datos.</p>
             </div>
         </div>
     </div>
