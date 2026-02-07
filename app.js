@@ -50,6 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("modal-import-btn").addEventListener("click", () => {
         document.getElementById("import-file").click();
     });
+    document.getElementById("modal-backup-btn").addEventListener("click", downloadFullBackup);
     document.getElementById("import-file").addEventListener("change", importData);
     document.getElementById("select-all-btn").addEventListener("click", selectAllExportBlocks);
     document.getElementById("deselect-all-btn").addEventListener("click", deselectAllExportBlocks);
@@ -881,7 +882,42 @@ function confirmExport(){
     URL.revokeObjectURL(url);
     
     closeExportModal();
-    alert("Se han exportado " + blockCount + " vías correctamente. Puedes compartir este archivo con tus amigos.");
+    showToast(`✓ ${blockCount} bloques exportados correctamente`);
+}
+
+// Función para descargar respaldo completo (iOS friendly)
+function downloadFullBackup(){
+    // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
+    const allBlocks = JSON.parse(localStorage.getItem("blocks")||"[]");
+    
+    if(allBlocks.length === 0){
+        alert("No tienes bloques para respaldar. Crea algunos bloques primero.");
+        return;
+    }
+    
+    const dataStr = JSON.stringify(allBlocks, null, 2);
+    const dataBlob = new Blob([dataStr], {type: "application/json"});
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    
+    // Formato: app-bloque-RESPALDO-COMPLETO-[cantidad]-[fecha].json
+    const timestamp = new Date().toISOString().split('T')[0];
+    const blockCount = allBlocks.length;
+    link.download = `app-bloque-RESPALDO-COMPLETO-${blockCount}-bloques-${timestamp}.json`;
+    
+    // Para iOS Safari: forzar el atributo download
+    link.setAttribute('download', link.download);
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Limpiar el URL después de un pequeño retraso para asegurar descarga en iOS
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+    
+    closeOptionsModal();
+    showToast(`✓ Respaldo de ${blockCount} bloques descargado. En iPhone, elige dónde guardarlo.`);
 }
 
 function importData(event){
@@ -893,24 +929,39 @@ function importData(event){
         try {
             const importedBlocks = JSON.parse(e.target.result);
             if(!Array.isArray(importedBlocks)){
-                alert("Formato de archivo inválido");
+                alert("Formato de archivo inválido. Asegúrate de importar un archivo JSON válido.");
+                return;
+            }
+            
+            // Validar que los bloques tengan la estructura correcta
+            const validBlocks = importedBlocks.filter(b => b && typeof b === 'object' && b.imgSrcOriginal);
+            
+            if(validBlocks.length === 0){
+                alert("No se encontraron bloques válidos en el archivo.");
                 return;
             }
             
             // ⚠️ ALMACENAMIENTO CRÍTICO - NO MODIFICAR LA CLAVE "blocks"
             // Los bloques importados se FUSIONAN con los existentes (no reemplazan)
             const currentBlocks = JSON.parse(localStorage.getItem("blocks")||"[]");
-            const mergedBlocks = [...currentBlocks, ...importedBlocks];
+            const mergedBlocks = [...currentBlocks, ...validBlocks];
             localStorage.setItem("blocks", JSON.stringify(mergedBlocks));
             
-            alert("Se han importado " + importedBlocks.length + " bloques correctamente. Total de bloques: " + mergedBlocks.length);
             closeOptionsModal();
-            location.reload();
+            showToast(`✓ ${validBlocks.length} bloques importados. Total: ${mergedBlocks.length}`);
+            
+            // Recargar después de mostrar el toast
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
         } catch(err) {
-            alert("Error al leer el archivo: " + err.message);
+            alert("Error al leer el archivo: " + err.message + "\n\nAsegúrate de que el archivo no esté corrupto.");
         }
     };
     reader.readAsText(file);
+    
+    // Limpiar el input para permitir reimportar el mismo archivo
+    event.target.value = "";
 }
 
 // ---------- Zoom Image Functions ----------

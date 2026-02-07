@@ -741,15 +741,35 @@ section h2 {
     width: 100%;
     margin: 10px 0;
     padding: 12px 20px;
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);\n    color: #fff;
-    border: 1px solid rgba(59, 130, 246, 0.5);\n    font-weight: 600;
-    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);\n}
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #fff;
+    border: 1px solid rgba(59, 130, 246, 0.5);
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    min-height: 44px; /* iOS touch target */
+}
 
 .full-width:hover {
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);\n    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);\n}
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+}
+
+/* Botón de respaldo especial */
+.backup-btn {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.backup-btn:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+}
 
 .info-section {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(30, 58, 138, 0.08) 100%);\n    border: 1px solid rgba(59, 130, 246, 0.3);\n    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(30, 58, 138, 0.08) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 12px;
     padding: 18px;
     margin-top: 28px;
     backdrop-filter: blur(10px);
@@ -759,11 +779,16 @@ section h2 {
     font-size: 13px;
     color: #cbd5e1;
     line-height: 1.8;
-    margin: 0 0 10px 0;
+    margin: 0 0 12px 0;
 }
 
 .info-section p:last-child {
     margin-bottom: 0;
+}
+
+.info-section strong {
+    color: #e0e7ff;
+    font-weight: 600;
 }
 
 /* Export Modal Styles */
